@@ -1484,6 +1484,8 @@ async function initChat(){
   _chatUnread=JSON.parse(getStored('chat_unread')||'{}');
   _chatLastSeen=JSON.parse(getStored('chat_lastseen')||'{}');
   await chatLoadChannels();
+  const fab=document.getElementById('chat-fab');
+  if(fab) fab.style.display='';
   const sidebarBtn=document.getElementById('btn-chat-sidebar');
   if(sidebarBtn) sidebarBtn.style.display='';
   const csBtn=document.getElementById('cs-btn-chat');
