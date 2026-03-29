@@ -1591,6 +1591,8 @@ async function chatSaveEdit(id){
   if(!inp) return;
   const body=inp.value.trim();
   if(!body) return;
+  const wrap=document.getElementById('cedit-'+id);
+  if(wrap) wrap.remove(); // remove antes do reload para não bloquear o render
   await sbFetch('/rest/v1/messages?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},
     body:JSON.stringify({body,edited_at:new Date().toISOString()})});
   await chatLoadMessages();
