@@ -295,6 +295,21 @@ html,body{background:#000;color:var(--text);font-family:'Syne',sans-serif;min-he
 .chat-msg.mine .chat-bubble{background:var(--blue);color:#000;border-bottom-right-radius:4px;}
 .chat-msg.theirs .chat-bubble{background:var(--surface2);color:var(--text);border-bottom-left-radius:4px;}
 .chat-msg-time{font-size:9px;color:var(--text-hint);margin-top:2px;font-family:'DM Mono',monospace;}
+.chat-msg-actions{display:none;gap:3px;margin-bottom:2px;}
+.chat-msg.mine:hover .chat-msg-actions{display:flex;}
+.chat-act-btn{background:var(--surface2);border:1px solid var(--border);border-radius:5px;cursor:pointer;color:var(--text-muted);padding:3px 5px;display:flex;align-items:center;transition:all 0.12s;}
+.chat-act-btn:hover{color:var(--text);border-color:var(--border-md);}
+.chat-act-btn.del:hover{color:#ff4545;border-color:rgba(255,69,69,0.4);}
+.chat-edit-wrap{display:flex;flex-direction:column;gap:5px;max-width:100%;}
+.chat-edit-input{background:var(--surface2);border:1px solid var(--blue-border);border-radius:10px;padding:7px 11px;font-size:13px;color:var(--text);font-family:'Syne',sans-serif;outline:none;resize:none;min-width:180px;max-width:220px;line-height:1.4;}
+.chat-edit-btns{display:flex;gap:5px;}
+.chat-edit-save{font-size:11px;font-family:'DM Mono',monospace;padding:4px 10px;background:var(--blue);color:#000;border:none;border-radius:5px;cursor:pointer;}
+.chat-edit-cancel{font-size:11px;font-family:'DM Mono',monospace;padding:4px 10px;background:transparent;color:var(--text-muted);border:1px solid var(--border);border-radius:5px;cursor:pointer;}
+.chat-del-confirm{display:flex;gap:5px;align-items:center;margin-bottom:2px;}
+.chat-del-label{font-size:11px;color:var(--text-muted);font-family:'DM Mono',monospace;}
+.chat-del-yes{font-size:11px;font-family:'DM Mono',monospace;padding:3px 9px;background:#ff4545;color:#fff;border:none;border-radius:5px;cursor:pointer;}
+.chat-del-no{font-size:11px;font-family:'DM Mono',monospace;padding:3px 9px;background:transparent;color:var(--text-muted);border:1px solid var(--border);border-radius:5px;cursor:pointer;}
+.chat-edited-tag{font-size:9px;color:var(--text-hint);font-family:'DM Mono',monospace;margin-left:4px;}
 .chat-input-row{display:flex;gap:8px;padding:11px 13px;border-top:1px solid var(--border);flex-shrink:0;align-items:flex-end;}
 .chat-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:18px;padding:8px 13px;font-size:13px;color:var(--text);font-family:'Syne',sans-serif;outline:none;resize:none;min-height:36px;max-height:80px;overflow-y:auto;line-height:1.4;}
 .chat-input:focus{border-color:var(--blue-border);}
@@ -1532,14 +1547,67 @@ function renderChatMessages(){
     const name=chatProfiles[m.user_id]||'Usuário';
     const time=new Date(m.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     const showName=!mine&&(!prev||prev.user_id!==m.user_id);
-    h+=`<div class="chat-msg ${mine?'mine':'theirs'}">
+    const editedTag=m.edited_at?`<span class="chat-edited-tag">(editado)</span>`:'';
+    h+=`<div class="chat-msg ${mine?'mine':'theirs'}" id="cmsg-${m.id}">
       ${showName?`<div class="chat-msg-name">${esc(name)}</div>`:''}
-      <div class="chat-bubble">${esc(m.body)}</div>
-      <div class="chat-msg-time">${time}</div>
+      ${mine?`<div class="chat-msg-actions">
+        <button class="chat-act-btn" onclick="chatStartEdit('${m.id}')" title="Editar"><svg width="11" height="11" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg></button>
+        <button class="chat-act-btn del" onclick="chatShowDelete('${m.id}')" title="Apagar"><svg width="11" height="11" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+      </div>`:''}
+      <div class="chat-bubble" id="cbubble-${m.id}">${esc(m.body)}</div>
+      <div class="chat-msg-time">${time}${editedTag}</div>
     </div>`;
     prev=m;
   });
   el.innerHTML=h;
+}
+
+function chatStartEdit(id){
+  const m=chatMessages.find(x=>x.id===id);
+  if(!m) return;
+  const bubble=document.getElementById('cbubble-'+id);
+  if(!bubble) return;
+  bubble.outerHTML=`<div class="chat-edit-wrap" id="cedit-${id}">
+    <textarea class="chat-edit-input" id="cedit-inp-${id}" onkeydown="chatEditKeydown(event,'${id}')">${esc(m.body)}</textarea>
+    <div class="chat-edit-btns">
+      <button class="chat-edit-save" onclick="chatSaveEdit('${id}')">Salvar</button>
+      <button class="chat-edit-cancel" onclick="renderChatMessages()">Cancelar</button>
+    </div>
+  </div>`;
+  const inp=document.getElementById('cedit-inp-'+id);
+  if(inp){ inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length); }
+}
+
+function chatEditKeydown(e,id){
+  if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); chatSaveEdit(id); }
+  if(e.key==='Escape') renderChatMessages();
+}
+
+async function chatSaveEdit(id){
+  const inp=document.getElementById('cedit-inp-'+id);
+  if(!inp) return;
+  const body=inp.value.trim();
+  if(!body) return;
+  await sbFetch('/rest/v1/messages?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},
+    body:JSON.stringify({body,edited_at:new Date().toISOString()})});
+  await chatLoadMessages();
+  chatScrollBottom();
+}
+
+function chatShowDelete(id){
+  const bubble=document.getElementById('cbubble-'+id);
+  if(!bubble) return;
+  bubble.outerHTML=`<div class="chat-del-confirm" id="cdel-${id}">
+    <span class="chat-del-label">Apagar para todos?</span>
+    <button class="chat-del-yes" onclick="chatConfirmDelete('${id}')">Apagar</button>
+    <button class="chat-del-no" onclick="renderChatMessages()">Cancelar</button>
+  </div>`;
+}
+
+async function chatConfirmDelete(id){
+  await sbFetch('/rest/v1/messages?id=eq.'+id,{method:'DELETE'});
+  await chatLoadMessages();
+  chatScrollBottom();
 }
 
 function chatScrollBottom(){
