@@ -1218,11 +1218,13 @@ function openProfile(){
   if(!currentUser) return;
   const overlay = document.getElementById('profile-modal-overlay');
   const nameInput = document.getElementById('profile-name-input');
+  const cargoInput = document.getElementById('profile-cargo-input');
   const emailVal = document.getElementById('profile-email-val');
   const avatarContent = document.getElementById('profile-avatar-content');
   const storedPhoto = getStored('user_photo_'+currentUser.id);
   const storedName = getStored('user_name_'+currentUser.id);
   nameInput.value = storedName || currentUser.email.split('@')[0];
+  cargoInput.value = getStored('user_cargo_'+currentUser.id) || '';
   emailVal.textContent = currentUser.email;
   if(storedPhoto){
     avatarContent.innerHTML = `<img src="${storedPhoto}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;
@@ -1258,9 +1260,13 @@ function handlePhotoUpload(e){
 }
 function saveProfile(){
   if(!currentUser) return;
-  const nameInput = document.getElementById('profile-name-input');
-  const name = nameInput.value.trim();
+  const name = document.getElementById('profile-name-input').value.trim();
+  const cargo = document.getElementById('profile-cargo-input').value.trim();
   if(name) setStored('user_name_'+currentUser.id, name);
+  setStored('user_cargo_'+currentUser.id, cargo);
+  // sincroniza com a tabela profiles usada pelo chat
+  sbFetch('/rest/v1/profiles',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
+    body:JSON.stringify({user_id:currentUser.id,name:name||currentUser.email.split('@')[0],cargo,updated_at:new Date().toISOString()})}).catch(()=>{});
   closeProfile();
 }
 
@@ -1412,7 +1418,7 @@ function saveEdit(){
 // ── CHAT ──────────────────────────────────────────────────
 let chatOpen=false, chatView='list';
 let chatActiveId=null, chatActiveName='', chatActiveType='';
-let chatProfiles={}, chatChannelList=[], chatMessages=[];
+let chatProfiles={}, chatCargos={}, chatChannelList=[], chatMessages=[];
 let _chatPollTimer=null, _chatUnread={}, _chatLastSeen={};
 
 async function initChat(){
@@ -1421,7 +1427,7 @@ async function initChat(){
   await sbFetch('/rest/v1/profiles',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
     body:JSON.stringify({user_id:currentUser.id,name:displayName,updated_at:new Date().toISOString()})});
   const pr=await sbFetch('/rest/v1/profiles?select=user_id,name');
-  if(pr.ok)(await pr.json()).forEach(p=>{ chatProfiles[p.user_id]=p.name; });
+  if(pr.ok)(await pr.json()).forEach(p=>{ chatProfiles[p.user_id]=p.name; chatCargos[p.user_id]=p.cargo||''; });
   _chatUnread=JSON.parse(getStored('chat_unread')||'{}');
   _chatLastSeen=JSON.parse(getStored('chat_lastseen')||'{}');
   await chatLoadChannels();
@@ -1495,7 +1501,7 @@ function renderChatList(){
     const u=ch?(_chatUnread[ch.id]||0):0;
     h+=`<div class="chat-list-item" onclick="chatOpenDM('${uid}')">
       <div class="chat-av">${esc(name.charAt(0).toUpperCase())}</div>
-      <div class="chat-li-info"><div class="chat-li-name">${esc(name)}</div><div class="chat-li-preview">Mensagem direta</div></div>
+      <div class="chat-li-info"><div class="chat-li-name">${esc(name)}</div><div class="chat-li-preview">${esc(chatCargos[uid]||'Mensagem direta')}</div></div>
       ${u?`<div class="chat-li-unread">${u}</div>`:''}
     </div>`;
   });
@@ -1591,12 +1597,16 @@ async function chatSaveEdit(id){
   if(!inp) return;
   const body=inp.value.trim();
   if(!body) return;
+  // atualiza localmente imediatamente (optimistic update)
+  const msg=chatMessages.find(m=>m.id===id);
+  if(msg){ msg.body=body; msg.edited_at=new Date().toISOString(); }
   const wrap=document.getElementById('cedit-'+id);
-  if(wrap) wrap.remove(); // remove antes do reload para não bloquear o render
+  if(wrap) wrap.remove();
+  renderChatMessages();
+  chatScrollBottom();
+  // persiste no banco em background
   await sbFetch('/rest/v1/messages?id=eq.'+id,{method:'PATCH',headers:{'Prefer':'return=minimal'},
     body:JSON.stringify({body,edited_at:new Date().toISOString()})});
-  await chatLoadMessages();
-  chatScrollBottom();
 }
 
 function chatShowDelete(id){
@@ -1768,6 +1778,10 @@ function updateChatBadge(){
     <div class="profile-field">
       <div class="profile-label">Nome</div>
       <input type="text" id="profile-name-input" class="profile-input" placeholder="Seu nome"/>
+    </div>
+    <div class="profile-field">
+      <div class="profile-label">Cargo</div>
+      <input type="text" id="profile-cargo-input" class="profile-input" placeholder="Ex: Designer, Redator..."/>
     </div>
     <div class="profile-field">
       <div class="profile-label">E-mail</div>
