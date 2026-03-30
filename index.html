@@ -341,25 +341,14 @@ html,body{background:#000;color:var(--text);font-family:'Syne',sans-serif;min-he
 .chat-fmt-btn:hover{color:var(--text);background:var(--surface3);}
 .chat-fmt-btn b{font-weight:800;}
 .chat-fmt-btn i{font-style:italic;}
-.chat-emoji-picker{position:absolute;bottom:calc(100% + 8px);right:0;width:288px;background:var(--surface2);border:1px solid var(--border-md);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.6);z-index:10;overflow:hidden;}
-.chat-picker-tabs{display:flex;border-bottom:1px solid var(--border);}
-.chat-picker-tab{flex:1;background:none;border:none;border-bottom:2px solid transparent;padding:8px 4px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-hint);cursor:pointer;transition:all 0.12s;}
-.chat-picker-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+.chat-emoji-picker{position:absolute;bottom:calc(100% + 8px);right:0;width:280px;background:var(--surface2);border:1px solid var(--border-md);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.6);z-index:10;overflow:hidden;}
 .chat-emoji-cats{display:flex;border-bottom:1px solid var(--border);padding:4px 6px;gap:2px;}
 .chat-emoji-cat-btn{background:none;border:none;cursor:pointer;padding:4px 7px;border-radius:6px;font-size:14px;opacity:0.55;transition:opacity 0.1s,background 0.1s;}
 .chat-emoji-cat-btn:hover,.chat-emoji-cat-btn.active{opacity:1;background:var(--surface3);}
 .chat-emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:0;padding:6px;max-height:180px;overflow-y:auto;}
 .chat-emoji-btn{background:none;border:none;cursor:pointer;padding:5px 3px;font-size:18px;border-radius:6px;line-height:1;transition:background 0.1s;}
 .chat-emoji-btn:hover{background:var(--surface3);}
-.chat-gif-search{display:flex;gap:6px;padding:8px;}
-.chat-gif-input{flex:1;background:var(--surface3);border:1px solid var(--border);border-radius:6px;padding:6px 9px;font-size:12px;color:var(--text);font-family:'DM Mono',monospace;outline:none;}
-.chat-gif-input:focus{border-color:var(--blue-border);}
-.chat-gif-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:0 8px 8px;max-height:200px;overflow-y:auto;}
-.chat-gif-item{border-radius:6px;overflow:hidden;cursor:pointer;aspect-ratio:4/3;background:var(--surface3);}
-.chat-gif-item img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity 0.1s;}
-.chat-gif-item:hover img{opacity:0.8;}
-.chat-gif-msg{padding:16px;text-align:center;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-hint);}
-.chat-bubble img.chat-gif{max-width:200px;max-height:160px;border-radius:8px;display:block;}
+.chat-bubble img.chat-gif{max-width:220px;max-height:180px;border-radius:8px;display:block;cursor:pointer;}
 .chat-send-btn{width:28px;height:28px;background:var(--blue);border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.15s;}
 .chat-send-btn:hover{opacity:0.82;}
 .chat-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px;color:var(--text-hint);font-size:13px;text-align:center;padding:20px;}
@@ -1122,7 +1111,6 @@ document.addEventListener('DOMContentLoaded',function(){
 });
 
 // ── SUPABASE ──
-const TENOR_KEY = 'AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCDY'; // chave demo Tenor — substitua por sua chave em console.cloud.google.com
 const SB_URL = 'https://qjfcikxazvakpuxxxtbz.supabase.co';
 const SB_KEY = 'sb_publishable_RzLDcQJ_skZ9nKNCl7RrtA_5_EPoEyD';
 let currentUser = null, sbToken = null, sbRefresh = null;
@@ -1870,66 +1858,69 @@ const _emojiCats=[
   {label:'🔥',name:'Símbolos',emojis:['🔥','⚡','✨','💫','⭐','🌟','💥','❄️','🌊','💧','🌈','☀️','🌙','⚪','⚫','🟤','🔴','🟠','🟡','🟢','🔵','🟣','🔶','🔷','🔸','🔹','🔺','🔻','💠','🔘','🔲','🔳','▪️','▫️','◾','◽','◼️','◻️','✅','❌','❎','⭕','🚫','✔️','➕','➖','➗','✖️','♻️','💯','‼️','⁉️','❓','❔','❕','❗','〰️','💤','🔔','🔕','🔇','🔈','🔉','🔊']},
   {label:'😂',name:'Reações',emojis:['👍','👎','❤️','😂','😮','😢','😡','🙌','🔥','💯','🎉','✅','👀','💪','🤝','🙏','💀','😭','🤣','😅','😬','🤦','🤷','🫡','💬','📣','🚀','⚡','🎯','💡']},
 ];
-let _emojiActiveCat=0, _pickerTab='emoji';
+let _emojiActiveCat=0;
 
 function toggleEmojiPicker(e){
   e.stopPropagation();
   const picker=document.getElementById('chat-emoji-picker');
   if(picker.style.display!=='none'){ picker.style.display='none'; return; }
-  renderPicker();
+  renderEmojiPicker();
   picker.style.display='';
   setTimeout(()=>document.addEventListener('click',function h(ev){ if(!picker.contains(ev.target)){picker.style.display='none'; document.removeEventListener('click',h);} }),0);
 }
 
-function renderPicker(){
+function renderEmojiPicker(){
   const picker=document.getElementById('chat-emoji-picker');
-  const tabsHtml=`<div class="chat-picker-tabs">
-    <button class="chat-picker-tab${_pickerTab==='emoji'?' active':''}" onclick="switchPickerTab('emoji');event.stopPropagation();">😊 Emoji</button>
-    <button class="chat-picker-tab${_pickerTab==='gif'?' active':''}" onclick="switchPickerTab('gif');event.stopPropagation();">GIF</button>
-  </div>`;
-  if(_pickerTab==='emoji'){
-    const cat=_emojiCats[_emojiActiveCat];
-    const cats=_emojiCats.map((c,i)=>`<button class="chat-emoji-cat-btn${i===_emojiActiveCat?' active':''}" onclick="switchEmojiCat(${i});event.stopPropagation();" title="${c.name}">${c.label}</button>`).join('');
-    const grid=cat.emojis.map(em=>`<button class="chat-emoji-btn" onclick="insertEmoji('${em}');event.stopPropagation();">${em}</button>`).join('');
-    picker.innerHTML=tabsHtml+`<div class="chat-emoji-cats">${cats}</div><div class="chat-emoji-grid">${grid}</div>`;
+  const cat=_emojiCats[_emojiActiveCat];
+  const cats=_emojiCats.map((c,i)=>`<button class="chat-emoji-cat-btn${i===_emojiActiveCat?' active':''}" onclick="switchEmojiCat(${i});event.stopPropagation();" title="${c.name}">${c.label}</button>`).join('');
+  const grid=cat.emojis.map(em=>`<button class="chat-emoji-btn" onclick="insertEmoji('${em}');event.stopPropagation();">${em}</button>`).join('');
+  picker.innerHTML=`<div class="chat-emoji-cats">${cats}</div><div class="chat-emoji-grid">${grid}</div>`;
+}
+
+function switchEmojiCat(idx){ _emojiActiveCat=idx; renderEmojiPicker(); }
+
+function triggerChatAttach(){ document.getElementById('chat-attach-input').click(); }
+
+function handleChatAttach(e){
+  const file=e.target.files[0];
+  e.target.value='';
+  if(!file||!chatActiveId) return;
+  const isGif=file.type==='image/gif';
+  const MAX_GIF=400*1024; // 400 KB
+  const MAX_IMG=5*1024*1024; // 5 MB
+  if(isGif){
+    if(file.size>MAX_GIF){
+      alert('GIF muito grande (máx 400 KB). Use um GIF menor para manter a conversa leve.'); return;
+    }
+    const reader=new FileReader();
+    reader.onload=async function(ev){
+      const dataUrl=ev.target.result;
+      await sbFetch('/rest/v1/messages',{method:'POST',headers:{'Prefer':'return=minimal'},
+        body:JSON.stringify({channel_id:chatActiveId,user_id:currentUser.id,body:'[gif]'+dataUrl})});
+      await chatLoadMessages(); chatScrollBottom();
+    };
+    reader.readAsDataURL(file);
   } else {
-    picker.innerHTML=tabsHtml+`<div class="chat-gif-search"><input class="chat-gif-input" id="gif-search-inp" placeholder="Buscar GIF..." oninput="searchGifs(this.value)" onclick="event.stopPropagation()"/></div><div class="chat-gif-grid" id="gif-grid"><div class="chat-gif-msg">Digite para buscar GIFs</div></div>`;
-    setTimeout(()=>{ const el=document.getElementById('gif-search-inp'); if(el) el.focus(); },0);
+    if(file.size>MAX_IMG){ alert('Imagem muito grande (máx 5 MB).'); return; }
+    const reader=new FileReader();
+    reader.onload=function(ev){
+      const img=new Image();
+      img.onload=async function(){
+        const MAX=480;
+        const scale=Math.min(MAX/img.width,MAX/img.height,1);
+        const canvas=document.createElement('canvas');
+        canvas.width=Math.round(img.width*scale);
+        canvas.height=Math.round(img.height*scale);
+        canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+        const dataUrl=canvas.toDataURL('image/jpeg',0.80);
+        await sbFetch('/rest/v1/messages',{method:'POST',headers:{'Prefer':'return=minimal'},
+          body:JSON.stringify({channel_id:chatActiveId,user_id:currentUser.id,body:'[gif]'+dataUrl})});
+        await chatLoadMessages(); chatScrollBottom();
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
   }
-}
-
-function switchPickerTab(tab){ _pickerTab=tab; renderPicker(); }
-function switchEmojiCat(idx){ _emojiActiveCat=idx; renderPicker(); }
-
-let _gifSearchTimer=null;
-function searchGifs(q){
-  clearTimeout(_gifSearchTimer);
-  const grid=document.getElementById('gif-grid');
-  if(!q.trim()){ grid.innerHTML='<div class="chat-gif-msg">Digite para buscar GIFs</div>'; return; }
-  grid.innerHTML='<div class="chat-gif-msg">Buscando...</div>';
-  _gifSearchTimer=setTimeout(async()=>{
-    try{
-      const res=await fetch(`https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(q)}&key=${TENOR_KEY}&limit=12&media_filter=gif`);
-      if(!res.ok) throw new Error();
-      const data=await res.json();
-      if(!data.results||!data.results.length){ grid.innerHTML='<div class="chat-gif-msg">Nenhum resultado</div>'; return; }
-      grid.innerHTML=data.results.map(r=>{
-        const tiny=r.media_formats?.tinygif?.url||r.media_formats?.gif?.url||'';
-        const full=r.media_formats?.gif?.url||tiny;
-        return `<div class="chat-gif-item" onclick="sendGif('${esc(full)}');event.stopPropagation();" title="${esc(r.title||'')}"><img src="${esc(tiny)}" alt="gif" loading="lazy"/></div>`;
-      }).join('');
-    }catch(_){ grid.innerHTML='<div class="chat-gif-msg">Erro ao buscar. Tente novamente.</div>'; }
-  },400);
-}
-
-async function sendGif(url){
-  const picker=document.getElementById('chat-emoji-picker');
-  if(picker) picker.style.display='none';
-  if(!chatActiveId) return;
-  await sbFetch('/rest/v1/messages',{method:'POST',headers:{'Prefer':'return=minimal'},
-    body:JSON.stringify({channel_id:chatActiveId,user_id:currentUser.id,body:'[gif]'+url})});
-  await chatLoadMessages();
-  chatScrollBottom();
 }
 
 function insertEmoji(em){
@@ -2304,11 +2295,13 @@ async function leaveGroup(){
   <!-- input -->
   <div class="chat-input-row" id="chat-input-row" style="display:none;position:relative;">
     <div class="chat-emoji-picker" id="chat-emoji-picker" style="display:none;"></div>
+    <input type="file" id="chat-attach-input" accept="image/gif,image/png,image/jpeg,image/webp" style="display:none" onchange="handleChatAttach(event)"/>
     <div class="chat-input-wrap">
       <textarea class="chat-input" id="chat-input" placeholder="Mensagem..." rows="1" onkeydown="chatInputKeydown(event)"></textarea>
       <div class="chat-input-footer">
         <div class="chat-fmt-bar">
           <button class="chat-fmt-btn" onclick="toggleEmojiPicker(event)" title="Emojis" style="padding:3px 7px;display:flex;align-items:center;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg></button>
+          <button class="chat-fmt-btn" onclick="triggerChatAttach()" title="Anexar imagem / GIF" style="padding:3px 7px;display:flex;align-items:center;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
           <button class="chat-fmt-btn" onclick="chatWrapFmt('**','**')" title="Negrito"><b>B</b></button>
           <button class="chat-fmt-btn" onclick="chatWrapFmt('_','_')" title="Itálico"><i>I</i></button>
         </div>
