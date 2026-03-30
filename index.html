@@ -769,6 +769,17 @@ function addTask(){
 // ── DECK ──
 function openDeck(cliente){ const url=decks[cliente]; if(url) window.open(url,'_blank','noopener'); }
 
+let _deckClickTimer=null;
+function deckClick(c,e){
+  e.stopPropagation();
+  clearTimeout(_deckClickTimer);
+  _deckClickTimer=setTimeout(()=>openDeck(c),220);
+}
+function deckDblClick(c,e){
+  e.stopPropagation();
+  clearTimeout(_deckClickTimer);
+  editDeck(c);
+}
 function editDeck(cliente){ openDeckModal(cliente); }
 function openDeckModal(preCliente){
   const modal=document.getElementById('deck-modal');
@@ -978,7 +989,7 @@ function render(){
   const editSvg=`<svg width="9" height="9" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>`;
   const delSvg=`<svg width="9" height="9" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`;
   let deckHtml=deckEntries.map(([c,])=>`<div class="btn-deck-wrap">
-    <button class="btn-deck" onclick="openDeck('${esc(c)}')" title="Abrir deck de ${esc(c)}">${deckSvg}Deck ${esc(c)}</button>
+    <button class="btn-deck" onclick="deckClick('${esc(c)}',event)" ondblclick="deckDblClick('${esc(c)}',event)" title="Abrir deck · clique duplo para editar">${deckSvg}Deck ${esc(c)}</button>
     <div class="btn-deck-actions">
       <button class="btn-deck-act edit" onclick="editDeck('${esc(c)}');event.stopPropagation();" title="Editar">${editSvg}</button>
       <button class="btn-deck-act del" onclick="deleteDeck('${esc(c)}');event.stopPropagation();" title="Apagar">${delSvg}</button>
