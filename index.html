@@ -1070,7 +1070,7 @@ function render(){
 
   if(!filtered.length){
     const trulyEmpty = displayTasks.length===0;
-    if(trulyEmpty && isCurrentReal){
+    if(trulyEmpty && !readonly){
       document.getElementById('tasks-area').innerHTML=`<div class="empty-cta">
         <div class="empty-cta-icon"><svg width="24" height="24" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></div>
         <div class="empty-cta-title">Nenhuma entrega ainda</div>
