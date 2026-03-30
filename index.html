@@ -1352,14 +1352,17 @@ async function initApp(){
   document.getElementById('loading-screen').style.display='none';
   document.getElementById('auth-screen').classList.remove('visible');
   document.getElementById('app').style.display='grid';
-  // user bar
+  // user bar — busca perfil do Supabase para não perder dados ao trocar de domínio
+  try{
+    const pr=await sbFetch('/rest/v1/profiles?user_id=eq.'+currentUser.id+'&select=name,cargo&limit=1');
+    if(pr.ok){const rows=await pr.json();if(rows.length){if(rows[0].name) setStored('user_name_'+currentUser.id,rows[0].name);if(rows[0].cargo!=null) setStored('user_cargo_'+currentUser.id,rows[0].cargo);}}
+  }catch(_){}
   const nome = currentUser.user_metadata?.nome || currentUser.email.split('@')[0];
   const initials = nome.substring(0,2).toUpperCase();
   const sidebarBody = document.getElementById('sidebar-body');
   if(sidebarBody && !document.getElementById('user-bar')){
     const bar=document.createElement('div');
     bar.id='user-bar'; bar.className='user-bar';
-    // load photo from storage
     const storedPhoto = getStored('user_photo_'+currentUser.id);
     const storedName = getStored('user_name_'+currentUser.id);
     const displayName = storedName || currentUser.email.split('@')[0];
