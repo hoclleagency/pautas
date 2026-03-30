@@ -387,8 +387,21 @@ html,body{background:#0d0d0d;color:var(--text);font-family:'Syne',sans-serif;min
 .chat-picker-tabs{display:flex;border-bottom:1px solid var(--border);}
 .chat-picker-tab{flex:1;background:none;border:none;border-bottom:2px solid transparent;padding:7px 4px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-hint);cursor:pointer;transition:all 0.12s;}
 .chat-picker-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
-.chat-send-btn{width:28px;height:28px;background:var(--blue);border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.15s;}
-.chat-send-btn:hover{opacity:0.82;}
+.chat-send-btn{width:28px;height:28px;background:var(--surface3);border:none;border-radius:6px;cursor:default;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.15s,opacity 0.15s;}
+.chat-send-btn.active{background:var(--blue);cursor:pointer;}
+.chat-send-btn.active:hover{opacity:0.82;}
+.chat-sched-btn{width:28px;height:28px;background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text-muted);transition:all 0.15s;}
+.chat-sched-btn:hover{background:var(--surface2);color:var(--text);}
+.chat-sched-pop{position:absolute;bottom:calc(100% + 8px);right:0;background:var(--surface2);border:1px solid var(--border-md);border-radius:10px;padding:14px 14px 12px;box-shadow:0 4px 24px rgba(0,0,0,0.55);z-index:30;width:230px;display:none;}
+.chat-sched-pop.open{display:block;}
+.chat-sched-pop-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;font-family:'Syne',sans-serif;}
+.chat-sched-label{font-size:10px;color:var(--text-hint);font-family:'DM Mono',monospace;margin-bottom:3px;}
+.chat-sched-input{background:var(--surface3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:6px 8px;width:100%;font-family:'DM Mono',monospace;box-sizing:border-box;margin-bottom:8px;}
+.chat-sched-row{display:flex;gap:6px;margin-bottom:10px;}
+.chat-sched-select{background:var(--surface3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:6px 6px;flex:1;font-family:'DM Mono',monospace;cursor:pointer;}
+.chat-sched-confirm{width:100%;background:var(--blue);color:#000;border:none;border-radius:6px;padding:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;}
+.chat-sched-confirm:hover{opacity:0.85;}
+.chat-sched-msg-tag{display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--text-hint);font-family:'DM Mono',monospace;margin-top:4px;opacity:0.8;}
 .chat-mention-dropdown{position:absolute;bottom:calc(100% + 4px);left:0;background:var(--surface2);border:1px solid var(--border-md);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.5);min-width:180px;max-width:260px;z-index:20;overflow:hidden;}
 .chat-mention-item{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;transition:background 0.1s;}
 .chat-mention-item:hover,.chat-mention-item.active{background:var(--surface3);}
@@ -1962,6 +1975,7 @@ async function chatOpenChannel(channelId,name,type){
   chatRefreshProfiles();
   await chatLoadMessages();
   chatScrollBottom(true);
+  chatInputChanged();
   if(inp) inp.focus();
 }
 
@@ -1973,7 +1987,10 @@ async function chatOpenDM(otherUserId){
 
 async function chatLoadMessages(){
   if(!chatActiveId) return;
-  const res=await sbFetch('/rest/v1/messages?channel_id=eq.'+chatActiveId+'&order=created_at.asc&limit=100');
+  const now=new Date().toISOString();
+  // mostra: sem agendamento, ou já no horário, ou enviado pelo próprio usuário (para ver agendadas pendentes)
+  const filter=`or=(scheduled_at.is.null,scheduled_at.lte.${now},user_id.eq.${currentUser.id})`;
+  const res=await sbFetch('/rest/v1/messages?channel_id=eq.'+chatActiveId+'&order=created_at.asc&limit=100&'+filter);
   if(!res.ok) return;
   chatMessages=await res.json();
   if(chatMessages.length){
@@ -1997,11 +2014,13 @@ function renderChatMessages(){
     const name=chatProfiles[m.user_id]||'Usuário';
     const time=new Date(m.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     const isFirst=!prev||prev.user_id!==m.user_id;
-    const isLast=true; // simplificado: sempre mostra avatar na última do grupo (calculamos abaixo)
+    const isLast=true;
     const editedTag=m.edited_at?`<span class="chat-edited-tag">(editado)</span>`:'';
+    const isPending=m.scheduled_at&&new Date(m.scheduled_at)>new Date();
+    const schedTag=isPending?`<div class="chat-sched-msg-tag"><svg width="9" height="9" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Agendada · ${new Date(m.scheduled_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>`:'';
 
     if(mine){
-      h+=`<div class="chat-msg mine" id="cmsg-${m.id}">
+      h+=`<div class="chat-msg mine${isPending?' pending':''}" id="cmsg-${m.id}" style="${isPending?'opacity:0.65;':''}">
         <div class="chat-msg-wrap">
           <div class="chat-msg-actions">
             <button class="chat-act-btn" onclick="chatStartEdit('${m.id}')" title="Editar"><svg width="11" height="11" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg></button>
@@ -2009,6 +2028,7 @@ function renderChatMessages(){
           </div>
           <div class="chat-bubble" id="cbubble-${m.id}">${chatFmt(m.body)}</div>
           <div class="chat-msg-time">${time}${editedTag}</div>
+          ${schedTag}
         </div>
       </div>`;
     } else {
@@ -2091,11 +2111,79 @@ function chatScrollBottom(force){
   if(el&&(force||chatIsAtBottom())) el.scrollTop=el.scrollHeight;
 }
 
+function chatInputChanged(){
+  const inp=document.getElementById('chat-input');
+  const btn=document.getElementById('chat-send-btn');
+  if(!inp||!btn) return;
+  btn.classList.toggle('active', inp.value.trim().length>0);
+  // ícone: branco quando ativo, muted quando inativo
+  const svg=btn.querySelector('svg');
+  if(svg) svg.setAttribute('stroke', inp.value.trim().length>0 ? '#000' : 'var(--text-hint)');
+}
+function chatSendIfActive(){
+  const inp=document.getElementById('chat-input');
+  if(!inp||!inp.value.trim()) return;
+  sendChatMessage();
+}
+
+// ── SCHEDULE POP ──
+let _schedPopOpen=false;
+function toggleSchedulePop(e){
+  e.stopPropagation();
+  const pop=document.getElementById('chat-sched-pop');
+  if(!pop) return;
+  _schedPopOpen=!_schedPopOpen;
+  if(_schedPopOpen){
+    // preenche data padrão = hoje
+    const now=new Date();
+    const dateInp=document.getElementById('chat-sched-date');
+    dateInp.value=now.toISOString().slice(0,10);
+    // horas
+    const hourSel=document.getElementById('chat-sched-hour');
+    hourSel.innerHTML=Array.from({length:24},(_,i)=>`<option value="${i}">${String(i).padStart(2,'0')}h</option>`).join('');
+    hourSel.value=now.getHours();
+    // minutos 0,15,30,45
+    const minSel=document.getElementById('chat-sched-min');
+    minSel.innerHTML=['00','15','30','45'].map(m=>`<option value="${m}">${m}min</option>`).join('');
+    minSel.value=['00','15','30','45'].reduce((best,m)=>Math.abs(parseInt(m)-now.getMinutes())<Math.abs(parseInt(best)-now.getMinutes())?m:best);
+  }
+  pop.classList.toggle('open',_schedPopOpen);
+}
+function closeSchedulePop(){
+  _schedPopOpen=false;
+  const pop=document.getElementById('chat-sched-pop');
+  if(pop) pop.classList.remove('open');
+}
+document.addEventListener('click',function(e){
+  if(_schedPopOpen&&!e.target.closest('#chat-sched-pop')&&!e.target.closest('#chat-sched-btn')) closeSchedulePop();
+});
+
+async function confirmScheduleMessage(){
+  const inp=document.getElementById('chat-input');
+  const body=inp.value.trim();
+  if(!body||!chatActiveId){ closeSchedulePop(); return; }
+  const dateVal=document.getElementById('chat-sched-date').value;
+  const hourVal=document.getElementById('chat-sched-hour').value;
+  const minVal=document.getElementById('chat-sched-min').value;
+  if(!dateVal){ alert('Escolha uma data.'); return; }
+  const scheduled_at=new Date(`${dateVal}T${String(hourVal).padStart(2,'0')}:${minVal}:00`).toISOString();
+  if(new Date(scheduled_at)<=new Date()){ alert('Escolha um horário no futuro.'); return; }
+  inp.value=''; inp.style.height='auto';
+  chatInputChanged();
+  try{localStorage.removeItem('hoclle_chat_draft_'+chatActiveId);}catch(_){}
+  closeSchedulePop();
+  await sbFetch('/rest/v1/messages',{method:'POST',headers:{'Prefer':'return=minimal'},
+    body:JSON.stringify({channel_id:chatActiveId,user_id:currentUser.id,body,scheduled_at})});
+  await chatLoadMessages();
+  chatScrollBottom(true);
+}
+
 async function sendChatMessage(){
   const inp=document.getElementById('chat-input');
   const body=inp.value.trim();
   if(!body||!chatActiveId) return;
   inp.value=''; inp.style.height='auto';
+  chatInputChanged();
   try{localStorage.removeItem('hoclle_chat_draft_'+chatActiveId);}catch(_){}
   await sbFetch('/rest/v1/messages',{method:'POST',headers:{'Prefer':'return=minimal'},
     body:JSON.stringify({channel_id:chatActiveId,user_id:currentUser.id,body})});
@@ -2696,16 +2784,32 @@ async function leaveGroup(){
     <div class="chat-emoji-picker" id="chat-emoji-picker" style="display:none;"></div>
     <input type="file" id="chat-sticker-input" accept="image/png,image/gif,image/jpeg,image/webp" style="display:none" onchange="handleStickerUpload(event)"/>
     <div class="chat-input-wrap">
-      <textarea class="chat-input" id="chat-input" placeholder="Mensagem..." rows="1" onkeydown="chatInputKeydown(event)"></textarea>
+      <textarea class="chat-input" id="chat-input" placeholder="Mensagem..." rows="1" onkeydown="chatInputKeydown(event)" oninput="chatInputChanged()"></textarea>
       <div class="chat-input-footer">
         <div class="chat-fmt-bar">
           <button class="chat-fmt-btn" onclick="toggleEmojiPicker(event)" title="Emojis" style="padding:3px 7px;display:flex;align-items:center;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg></button>
           <button class="chat-fmt-btn" onclick="chatWrapFmt('**','**')" title="Negrito"><b>B</b></button>
           <button class="chat-fmt-btn" onclick="chatWrapFmt('_','_')" title="Itálico"><i>I</i></button>
         </div>
-        <button class="chat-send-btn" onclick="sendChatMessage()" title="Enviar">
-          <svg width="14" height="14" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-        </button>
+        <div style="display:flex;align-items:center;gap:5px;position:relative;">
+          <div class="chat-sched-pop" id="chat-sched-pop">
+            <div class="chat-sched-pop-title">Programar mensagem</div>
+            <div class="chat-sched-label">Data</div>
+            <input type="date" class="chat-sched-input" id="chat-sched-date"/>
+            <div class="chat-sched-label">Horário</div>
+            <div class="chat-sched-row">
+              <select class="chat-sched-select" id="chat-sched-hour"></select>
+              <select class="chat-sched-select" id="chat-sched-min"></select>
+            </div>
+            <button class="chat-sched-confirm" onclick="confirmScheduleMessage()">Programar</button>
+          </div>
+          <button class="chat-sched-btn" id="chat-sched-btn" onclick="toggleSchedulePop(event)" title="Programar envio">
+            <svg width="12" height="12" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </button>
+          <button class="chat-send-btn" id="chat-send-btn" onclick="chatSendIfActive()" title="Enviar">
+            <svg width="14" height="14" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+          </button>
+        </div>
       </div>
     </div>
   </div>
