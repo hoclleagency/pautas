@@ -2142,12 +2142,7 @@ function toggleSchedulePop(e){
     // preenche data padrão = hoje
     const now=new Date();
     document.getElementById('chat-sched-date').value=now.toISOString().slice(0,10);
-    const hourSel=document.getElementById('chat-sched-hour');
-    hourSel.innerHTML=Array.from({length:24},(_,i)=>`<option value="${i}">${String(i).padStart(2,'0')}h</option>`).join('');
-    hourSel.value=now.getHours();
-    const minSel=document.getElementById('chat-sched-min');
-    minSel.innerHTML=['00','15','30','45'].map(m=>`<option value="${m}">${m}min</option>`).join('');
-    minSel.value=['00','15','30','45'].reduce((best,m)=>Math.abs(parseInt(m)-now.getMinutes())<Math.abs(parseInt(best)-now.getMinutes())?m:best);
+    document.getElementById('chat-sched-time').value='00:00';
     const err=document.getElementById('chat-sched-err'); if(err) err.style.display='none';
   }
   pop.classList.toggle('open',_schedPopOpen);
@@ -2168,10 +2163,9 @@ async function confirmScheduleMessage(){
   function showErr(msg){ if(err){err.textContent=msg;err.style.display='block';} }
   if(!body||!chatActiveId){ closeSchedulePop(); return; }
   const dateVal=document.getElementById('chat-sched-date').value;
-  const hourVal=document.getElementById('chat-sched-hour').value;
-  const minVal=document.getElementById('chat-sched-min').value;
+  const timeVal=document.getElementById('chat-sched-time').value||'00:00';
   if(!dateVal){ showErr('Escolha uma data.'); return; }
-  const scheduled_at=new Date(`${dateVal}T${String(hourVal).padStart(2,'0')}:${minVal}:00`).toISOString();
+  const scheduled_at=new Date(`${dateVal}T${timeVal}:00`).toISOString();
   if(new Date(scheduled_at)<=new Date()){ showErr('Escolha um horário no futuro.'); return; }
   inp.value=''; inp.style.height='auto';
   chatInputChanged();
@@ -2815,10 +2809,7 @@ async function leaveGroup(){
   <div class="chat-sched-label">Data</div>
   <input type="date" class="chat-sched-input" id="chat-sched-date"/>
   <div class="chat-sched-label">Horário</div>
-  <div class="chat-sched-row">
-    <select class="chat-sched-select" id="chat-sched-hour"></select>
-    <select class="chat-sched-select" id="chat-sched-min"></select>
-  </div>
+  <input type="time" class="chat-sched-input" id="chat-sched-time" value="00:00"/>
   <div id="chat-sched-err" style="font-size:10px;color:#ff4545;font-family:'DM Mono',monospace;margin-bottom:6px;display:none;"></div>
   <button class="chat-sched-confirm" onclick="confirmScheduleMessage()">Programar</button>
 </div>
