@@ -63,9 +63,7 @@ html,body{background:#0d0d0d;color:var(--text);font-family:'Syne',sans-serif;min
 .btn-chat-sidebar:hover,.btn-chat-sidebar.active{border-color:var(--blue-border);color:var(--blue);}
 .btn-chat-badge{background:#ff4545;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0 3px;margin-left:auto;}
 .btn-close-month{font-family:'DM Mono',monospace;font-size:11px;padding:9px 12px;background:var(--blue);color:#000;border:none;border-radius:6px;cursor:pointer;transition:opacity 0.15s;display:flex;align-items:center;gap:8px;font-weight:600;}
-.btn-close-month:hover{opacity:0.88;}
-.btn-close-month{margin-top:0;font-family:'DM Mono',monospace;font-size:11px;padding:9px 12px;background:transparent;color:var(--text-hint);border:1px solid var(--border);border-radius:6px;cursor:pointer;text-align:left;transition:all 0.15s;display:flex;align-items:center;gap:8px;}
-.btn-close-month:hover{border-color:rgba(255,80,80,0.4);color:#ff6464;}
+.btn-close-month:hover{opacity:0.85;}
 
 /* MAIN */
 .main{padding:2rem 2.5rem;background:#0d0d0d;}
@@ -376,11 +374,11 @@ html,body{background:#0d0d0d;color:var(--text);font-family:'Syne',sans-serif;min
 .chat-emoji-btn{background:none;border:none;cursor:pointer;padding:5px 3px;font-size:18px;border-radius:6px;line-height:1;transition:background 0.1s;}
 .chat-emoji-btn:hover{background:var(--surface3);}
 .chat-bubble img.chat-gif{max-width:220px;max-height:180px;border-radius:8px;display:block;cursor:pointer;}
-.chat-bubble img.chat-sticker{width:40px;height:40px;object-fit:contain;vertical-align:middle;display:inline;}
+.chat-bubble img.chat-sticker{width:40px;height:40px;object-fit:cover;border-radius:6px;vertical-align:middle;display:inline;}
 .chat-sticker-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:8px;max-height:180px;overflow-y:auto;}
 .chat-sticker-btn{background:none;border:none;cursor:pointer;padding:4px;border-radius:6px;transition:background 0.1s;display:flex;align-items:center;justify-content:center;}
 .chat-sticker-btn:hover{background:var(--surface3);}
-.chat-sticker-btn img{width:40px;height:40px;object-fit:contain;}
+.chat-sticker-btn img{width:40px;height:40px;object-fit:cover;border-radius:6px;}
 .chat-sticker-add{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border:1.5px dashed var(--border-md);border-radius:8px;color:var(--text-hint);font-size:18px;cursor:pointer;transition:all 0.1s;}
 .chat-sticker-add:hover{border-color:var(--blue);color:var(--blue);}
 .chat-sticker-empty{grid-column:1/-1;padding:16px;text-align:center;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-hint);}
@@ -390,13 +388,13 @@ html,body{background:#0d0d0d;color:var(--text);font-family:'Syne',sans-serif;min
 .chat-send-btn{width:28px;height:28px;background:var(--surface3);border:none;border-radius:6px;cursor:default;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.15s,opacity 0.15s;}
 .chat-send-btn.active{background:var(--blue);cursor:pointer;}
 .chat-send-btn.active:hover{opacity:0.82;}
-.chat-sched-btn{width:28px;height:28px;background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text-muted);transition:all 0.15s;}
-.chat-sched-btn:hover{background:var(--surface2);color:var(--text);}
+.chat-sched-btn{width:28px;height:28px;background:none;border:1px solid rgba(0,189,247,0.35);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--blue);transition:all 0.15s;}
+.chat-sched-btn:hover{background:var(--blue-dim);border-color:var(--blue);}
 .chat-sched-pop{position:fixed;background:var(--surface2);border:1px solid var(--border-md);border-radius:10px;padding:14px 14px 12px;box-shadow:0 4px 24px rgba(0,0,0,0.55);z-index:1100;width:230px;display:none;}
 .chat-sched-pop.open{display:block;}
 .chat-sched-pop-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;font-family:'Syne',sans-serif;}
 .chat-sched-label{font-size:10px;color:var(--text-hint);font-family:'DM Mono',monospace;margin-bottom:3px;}
-.chat-sched-input{background:var(--surface3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:6px 8px;width:100%;font-family:'DM Mono',monospace;box-sizing:border-box;margin-bottom:8px;}
+.chat-sched-input{background:var(--surface3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:6px 8px;width:100%;font-family:'DM Mono',monospace;box-sizing:border-box;margin-bottom:8px;outline:none;transition:border-color 0.15s;} .chat-sched-input:focus{border-color:var(--blue-border);} .chat-sched-input::-webkit-calendar-picker-indicator{filter:invert(1) sepia(1) saturate(2) hue-rotate(175deg);opacity:0.7;cursor:pointer;} .chat-sched-input::-webkit-calendar-picker-indicator:hover{opacity:1;}
 .chat-sched-row{display:flex;gap:6px;margin-bottom:10px;}
 .chat-sched-select{background:var(--surface3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:6px 6px;flex:1;font-family:'DM Mono',monospace;cursor:pointer;}
 .chat-sched-confirm{width:100%;background:var(--blue);color:#000;border:none;border-radius:6px;padding:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;}
@@ -520,7 +518,6 @@ span.chat-at{color:var(--blue);font-weight:700;}
         </div>
 
         <div style="display:flex;flex-direction:column;gap:6px;margin-top:auto;">
-          <button class="btn-close-month" onclick="openCloseMonth()"><svg width="16" height="16" style="display:block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg> fechar mês</button>
           <button class="btn-archive" onclick="openArchive()"><svg width="16" height="16" style="display:block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg> histórico</button>
         </div>
 
@@ -1009,13 +1006,46 @@ function render(){
   const key=periodKey(navYear,navMonth);
   const isCurrentReal = key===activeKey();
 
+  // btn-close-month in header (only on active month)
+  let btnCloseHdr=document.getElementById('btn-close-month-hdr');
+  if(!btnCloseHdr){
+    btnCloseHdr=document.createElement('button');
+    btnCloseHdr.id='btn-close-month-hdr';
+    btnCloseHdr.className='btn-close-month';
+    btnCloseHdr.innerHTML='<svg width="13" height="13" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg> fechar mês';
+    btnCloseHdr.onclick=function(){openCloseMonth();};
+    const ha=document.querySelector('.header-actions');
+    ha.insertBefore(btnCloseHdr,ha.firstChild);
+  }
+  // btn-back-to-current (shown when not on active month)
+  let btnBack=document.getElementById('btn-back-current');
+  if(!btnBack){
+    btnBack=document.createElement('button');
+    btnBack.id='btn-back-current';
+    btnBack.style.cssText='font-family:"DM Mono",monospace;font-size:11px;padding:7px 12px;background:transparent;color:var(--text-hint);border:1px solid var(--border);border-radius:6px;cursor:pointer;display:none;align-items:center;gap:6px;transition:all 0.15s;';
+    btnBack.innerHTML='← hoje';
+    btnBack.onmouseenter=function(){this.style.color='var(--text)';this.style.borderColor='var(--border-md)';};
+    btnBack.onmouseleave=function(){this.style.color='var(--text-hint)';this.style.borderColor='var(--border)';};
+    btnBack.onclick=function(){navYear=NOW.getFullYear();navMonth=NOW.getMonth();viewingArchive=null;render();};
+    const ha=document.querySelector('.header-actions');
+    ha.insertBefore(btnBack,ha.firstChild);
+  }
   if(readonly){
     badge.style.display='inline-block';
     badge.textContent = '📅 '+keyToLabel(key)+' · arquivado';
     btnNew.disabled=true;
+    btnCloseHdr.style.display='none';
+    btnBack.style.display='flex';
+  } else if(!isCurrentReal){
+    badge.style.display='none';
+    btnNew.disabled=false;
+    btnCloseHdr.style.display='none';
+    btnBack.style.display='flex';
   } else {
     badge.style.display='none';
-    btnNew.disabled = false;
+    btnNew.disabled=false;
+    btnCloseHdr.style.display='flex';
+    btnBack.style.display='none';
   }
 
   // botões deck por cliente
@@ -1825,14 +1855,14 @@ async function chatRefreshProfiles(){
 async function chatHeartbeat(){
   if(!currentUser) return;
   const status=document.hidden?'away':'online';
-  await sbFetch('/rest/v1/profiles',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
+  await sbFetch('/rest/v1/profiles?on_conflict=user_id',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
     body:JSON.stringify({user_id:currentUser.id,last_seen:new Date().toISOString(),status,updated_at:new Date().toISOString()})}).catch(()=>{});
 }
 function chatGetStatus(uid){
   const d=_chatStatusData[uid];
   if(!d||!d.last_seen) return 'offline';
   const diff=Date.now()-new Date(d.last_seen).getTime();
-  if(diff<2*60*1000&&d.status==='online') return 'online';
+  if(diff<3*60*1000&&d.status==='online') return 'online';
   if(diff<15*60*1000) return 'away';
   return 'offline';
 }
@@ -2111,6 +2141,22 @@ function chatScrollBottom(force){
   if(el&&(force||chatIsAtBottom())) el.scrollTop=el.scrollHeight;
 }
 
+function chatInsertAt(){
+  const inp=document.getElementById('chat-input');
+  if(!inp) return;
+  const pos=inp.selectionStart||inp.value.length;
+  const before=inp.value.slice(0,pos);
+  const after=inp.value.slice(pos);
+  const needSpace=before.length>0&&!before.endsWith(' ');
+  inp.value=(needSpace?before+' @':before+'@')+after;
+  const newPos=pos+(needSpace?2:1);
+  inp.focus();
+  inp.setSelectionRange(newPos,newPos);
+  chatInputChanged();
+  // trigger mention dropdown
+  inp.dispatchEvent(new Event('input'));
+  chatDetectMention(inp);
+}
 function chatInputChanged(){
   const inp=document.getElementById('chat-input');
   const btn=document.getElementById('chat-send-btn');
@@ -2211,8 +2257,8 @@ function toggleEmojiPicker(e){
 function renderPicker(){
   const picker=document.getElementById('chat-emoji-picker');
   const tabs=`<div class="chat-picker-tabs">
-    <button class="chat-picker-tab${_pickerTab==='emoji'?' active':''}" onclick="_pickerTab='emoji';renderPicker();event.stopPropagation();">😊 Emoji</button>
-    <button class="chat-picker-tab${_pickerTab==='sticker'?' active':''}" onclick="_pickerTab='sticker';renderPicker();event.stopPropagation();">🏷️ Figurinhas</button>
+    <button class="chat-picker-tab${_pickerTab==='emoji'?' active':''}" onclick="_pickerTab='emoji';renderPicker();event.stopPropagation();">Emoji</button>
+    <button class="chat-picker-tab${_pickerTab==='sticker'?' active':''}" onclick="_pickerTab='sticker';renderPicker();event.stopPropagation();">Figurinhas</button>
   </div>`;
   if(_pickerTab==='emoji'){
     const cat=_emojiCats[_emojiActiveCat];
@@ -2789,6 +2835,7 @@ async function leaveGroup(){
           <button class="chat-fmt-btn" onclick="toggleEmojiPicker(event)" title="Emojis" style="padding:3px 7px;display:flex;align-items:center;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg></button>
           <button class="chat-fmt-btn" onclick="chatWrapFmt('**','**')" title="Negrito"><b>B</b></button>
           <button class="chat-fmt-btn" onclick="chatWrapFmt('_','_')" title="Itálico"><i>I</i></button>
+          <button class="chat-fmt-btn" onclick="chatInsertAt()" title="Mencionar alguém" style="font-size:13px;font-weight:700;color:var(--blue);">@</button>
         </div>
         <div style="display:flex;align-items:center;gap:5px;">
           <button class="chat-sched-btn" id="chat-sched-btn" onclick="toggleSchedulePop(event)" title="Programar envio">
