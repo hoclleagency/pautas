@@ -126,7 +126,7 @@ html,body{background:#000;color:var(--text);font-family:'Syne',sans-serif;min-he
 .btn-del:hover{color:var(--red);}
 .btn-move{background:none;border:none;cursor:pointer;color:var(--text-hint);padding:0 1px;flex-shrink:0;transition:color 0.15s;display:flex;align-items:center;}
 .btn-move:hover{color:var(--blue);}
-.move-popover{position:fixed;background:var(--surface2);border:1px solid var(--border-md);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.5);z-index:500;padding:10px 14px 12px;min-width:180px;}
+.move-popover{position:fixed;background:var(--surface2);border:1px solid var(--border-md);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.5);z-index:500;padding:10px 14px 12px;min-width:220px;}
 .move-popover-label{padding:0 0 8px;font-size:10px;font-family:'DM Mono',monospace;color:var(--text-hint);letter-spacing:1px;text-transform:uppercase;}
 .move-popover-selects{display:flex;gap:6px;margin-bottom:10px;}
 .move-popover-selects select{flex:1;background:var(--surface3);border:1px solid var(--border-md);border-radius:6px;color:var(--text);font-size:12px;font-family:'DM Mono',monospace;padding:5px 6px;cursor:pointer;outline:none;}
@@ -965,7 +965,7 @@ function toggleDay(dayKey){
 
 function render(){
   const displayTasks = getDisplayTasks();
-  const readonly = !isActiveMonth();
+  const readonly = (viewingArchive !== null);
 
   // progress
   const total=displayTasks.length, done=displayTasks.filter(t=>t.done).length, pct=total?Math.round(done/total*100):0;
@@ -980,13 +980,13 @@ function render(){
   const key=periodKey(navYear,navMonth);
   const isCurrentReal = key===activeKey();
 
-  if(readonly && displayTasks.length>0 && key!==activeKey()){
+  if(readonly){
     badge.style.display='inline-block';
-    badge.textContent = '📅 '+keyToLabel(key)+' · leitura';
+    badge.textContent = '📅 '+keyToLabel(key)+' · arquivado';
     btnNew.disabled=true;
   } else {
     badge.style.display='none';
-    btnNew.disabled = (viewingArchive !== null);
+    btnNew.disabled = false;
   }
 
   // botões deck por cliente
@@ -1089,7 +1089,7 @@ function render(){
         </div>
         <div style="display:flex;align-items:center;gap:4px;">
           ${(t.notes) ? `<span title="Tem observações" style="color:var(--blue);opacity:0.6;display:flex;align-items:center;"><svg width="13" height="13" style="display:block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/><path d="M12 11h.01"/><path d="M16 11h.01"/><path d="M8 11h.01"/></svg></span>` : ''}
-          ${!readonly?`<div style="display:flex;align-items:center;gap:2px;"><button class="btn-move" onclick="openMovePopover(${t.id},this)" title="Mover para outro mês"><svg width="13" height="13" style="display:block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-1"/><path d="M2 13h10"/><path d="m9 16 3-3-3-3"/></svg></button><button class="btn-edit" onclick="openEditModal(${t.id})" title="Editar"><svg width="13" height="13" style="display:block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg></button><button class="btn-del" onclick="deleteTask(${t.id})"><svg width="16" height="16" style="display:block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>`:''}
+          ${!readonly?`<div style="display:flex;align-items:center;gap:2px;"><button class="btn-edit" onclick="openEditModal(${t.id})" title="Editar"><svg width="13" height="13" style="display:block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg></button><button class="btn-move" onclick="openMovePopover(${t.id},this)" title="Mover para outro mês"><svg width="13" height="13" style="display:block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-1"/><path d="M2 13h10"/><path d="m9 16 3-3-3-3"/></svg></button><button class="btn-del" onclick="deleteTask(${t.id})"><svg width="16" height="16" style="display:block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>`:''}
         </div>
       </div>`;
     });
@@ -1104,17 +1104,21 @@ function openMovePopover(taskId, btn){
   const t=tasks.find(x=>x.id===taskId); if(!t) return;
   const currentPeriod=t.periodo||activeKey();
   const [cy,cm]=currentPeriod.split('-').map(Number);
+  // current day number from t.dia ("Dia 01" → 1)
+  const cdNum=parseInt((t.dia||'Dia 01').replace(/\D/g,''))||1;
   const nowYear=new Date().getFullYear();
   const years=[];
   for(let y=nowYear-3;y<=nowYear+3;y++) years.push(y);
   const monthNames=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const yearOpts=years.map(y=>`<option value="${y}"${y===cy?' selected':''}>${y}</option>`).join('');
   const monthOpts=monthNames.map((mn,i)=>`<option value="${i+1}"${(i+1)===cm?' selected':''}>${mn}</option>`).join('');
+  const dayOpts=Array.from({length:31},(_,i)=>{const d=i+1; return `<option value="${d}"${d===cdNum?' selected':''}>Dia ${String(d).padStart(2,'0')}</option>`;}).join('');
   const pop=document.createElement('div');
   pop.className='move-popover';
   pop.innerHTML=`
     <div class="move-popover-label">Mover para</div>
     <div class="move-popover-selects">
+      <select id="move-sel-day" style="max-width:72px;">${dayOpts}</select>
       <select id="move-sel-month">${monthOpts}</select>
       <select id="move-sel-year">${yearOpts}</select>
     </div>
@@ -1122,7 +1126,7 @@ function openMovePopover(taskId, btn){
   document.body.appendChild(pop);
   const rect=btn.getBoundingClientRect();
   const top=rect.bottom+4;
-  const left=Math.min(rect.left,window.innerWidth-196);
+  const left=Math.min(rect.left,window.innerWidth-230);
   pop.style.top=top+'px';
   pop.style.left=left+'px';
   setTimeout(()=>document.addEventListener('click',function h(e){
@@ -1132,13 +1136,16 @@ function openMovePopover(taskId, btn){
 function confirmMoveTask(taskId){
   const y=document.getElementById('move-sel-year').value;
   const m=document.getElementById('move-sel-month').value;
+  const d=document.getElementById('move-sel-day').value;
   const key=y+'-'+String(m).padStart(2,'0');
-  moveTask(taskId, key);
+  const newDia='Dia '+String(d).padStart(2,'0');
+  moveTask(taskId, key, newDia);
 }
-function moveTask(taskId, targetPeriod){
+function moveTask(taskId, targetPeriod, newDia){
   document.querySelectorAll('.move-popover').forEach(el=>el.remove());
   const t=tasks.find(x=>x.id===taskId); if(!t) return;
   t.periodo=targetPeriod;
+  if(newDia) t.dia=newDia;
   save(); render();
 }
 
