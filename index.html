@@ -2145,10 +2145,8 @@ function chatSendIfActive(){
   if(!inp||!inp.value.trim()) return;
   sendChatMessage();
 }
-async function sendStagedSticker(){
-  const id=_stagedStickerId;
+async function sendStagedSticker(id){
   if(!id||!chatActiveId) return;
-  cancelStagedSticker();
   await sbFetch('/rest/v1/messages',{method:'POST',headers:{'Prefer':'return=minimal'},
     body:JSON.stringify({channel_id:chatActiveId,user_id:currentUser.id,body:`[sticker:${id}]`})});
   await chatLoadMessages(); chatScrollBottom(true);
@@ -2301,15 +2299,7 @@ function handleStickerUpload(e){
 let _stagedStickerId=null;
 function stageSticker(id){
   document.getElementById('chat-emoji-picker').style.display='none';
-  const st=chatStickers.find(s=>s.id===id);
-  if(!st) return;
-  _stagedStickerId=id;
-  const preview=document.getElementById('chat-sticker-preview');
-  const img=document.getElementById('chat-sticker-preview-img');
-  if(preview&&img){ img.src=st.data; preview.classList.add('show'); }
-  // ativa botão de enviar
-  const btn=document.getElementById('chat-send-btn');
-  if(btn) btn.classList.add('active');
+  sendStagedSticker(id);
 }
 function cancelStagedSticker(){
   _stagedStickerId=null;
