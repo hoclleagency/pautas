@@ -548,7 +548,7 @@ span.chat-at{color:var(--blue);font-weight:700;}
         </div>
         <input class="custom-phase-input" id="custom-phase-input" placeholder="descreva a fase..." style="display:none;"/>
       </div>
-      <div class="form-full"><label class="form-label">descrição</label><input class="form-input" id="f-desc" placeholder="descreva a tarefa..."/></div>
+      <div class="form-full"><label class="form-label">descrição</label><textarea class="form-input" id="f-desc" placeholder="descreva a tarefa..." rows="2" style="resize:vertical;font-family:inherit;"></textarea></div>
       <div class="form-full"><label class="form-label">observações <span style="color:var(--text-hint);font-size:10px;">(opcional)</span></label><textarea class="form-input" id="f-notes" placeholder="referências, contexto, instruções..." style="resize:vertical;min-height:72px;font-family:inherit;"></textarea></div>
     </div>
     <div class="modal-actions">
@@ -1909,7 +1909,7 @@ function chatStartEdit(id){
   bubble.outerHTML=`<div class="chat-edit-wrap" id="cedit-${id}">
     <textarea class="chat-edit-input" id="cedit-inp-${id}" onkeydown="chatEditKeydown(event,'${id}')">${esc(m.body)}</textarea>
     <div class="chat-edit-btns">
-      <button class="chat-edit-save" onclick="chatSaveEdit('${id}')">Salvar</button>
+      <button class="chat-edit-save" onclick="chatSaveEdit('${id}')">Salvar <span style="opacity:0.6;font-size:10px;">⌘↵</span></button>
       <button class="chat-edit-cancel" onclick="renderChatMessages()">Cancelar</button>
     </div>
   </div>`;
@@ -1918,8 +1918,8 @@ function chatStartEdit(id){
 }
 
 function chatEditKeydown(e,id){
-  if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); chatSaveEdit(id); }
-  if(e.key==='Escape') renderChatMessages();
+  if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){ e.preventDefault(); chatSaveEdit(id); return; }
+  if(e.key==='Escape'){ e.preventDefault(); renderChatMessages(); }
 }
 
 async function chatSaveEdit(id){
@@ -2429,7 +2429,7 @@ async function leaveGroup(){
         </div>
         <input class="custom-phase-input" id="e-custom-phase" placeholder="descreva a fase..." style="display:none;"/>
       </div>
-      <div class="form-full"><label class="form-label">descrição</label><input class="form-input" id="e-desc" placeholder="descreva a entrega..."/></div>
+      <div class="form-full"><label class="form-label">descrição</label><textarea class="form-input" id="e-desc" placeholder="descreva a entrega..." rows="2" style="resize:vertical;font-family:inherit;"></textarea></div>
       <div class="form-full"><label class="form-label">observações <span style="color:var(--text-hint);font-size:10px;">(opcional)</span></label><textarea class="form-input" id="e-notes" placeholder="referências, contexto, instruções..." style="resize:vertical;min-height:72px;font-family:inherit;"></textarea></div>
     </div>
     <div class="modal-actions">
