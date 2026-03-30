@@ -362,6 +362,12 @@ html,body{background:#000;color:var(--text);font-family:'Syne',sans-serif;min-he
 .chat-picker-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
 .chat-send-btn{width:28px;height:28px;background:var(--blue);border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.15s;}
 .chat-send-btn:hover{opacity:0.82;}
+.chat-mention-dropdown{position:absolute;bottom:calc(100% + 4px);left:0;background:var(--surface2);border:1px solid var(--border-md);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.5);min-width:180px;max-width:260px;z-index:20;overflow:hidden;}
+.chat-mention-item{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;transition:background 0.1s;}
+.chat-mention-item:hover,.chat-mention-item.active{background:var(--surface3);}
+.chat-mention-name{font-size:12px;color:var(--text);font-family:'Syne',sans-serif;}
+.chat-mention-cargo{font-size:10px;color:var(--text-hint);font-family:'DM Mono',monospace;}
+span.chat-at{color:var(--blue);font-weight:700;}
 .chat-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px;color:var(--text-hint);font-size:13px;text-align:center;padding:20px;}
 .chat-toast{position:fixed;bottom:80px;right:24px;background:var(--surface2);border:1px solid var(--border-md);border-radius:10px;padding:10px 14px;cursor:pointer;z-index:901;box-shadow:0 4px 20px rgba(0,0,0,0.5);max-width:280px;animation:chatToastIn 0.2s ease;}
 @keyframes chatToastIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
@@ -618,7 +624,10 @@ function chatFmt(s){
     if(st) return `<img class="chat-sticker" src="${esc(st.data)}" alt="${esc(st.name||'sticker')}" title="${esc(st.name||'')}" loading="lazy"/>`;
     return '';
   }
-  return esc(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/_([^_\s][^_]*)_/g,'<em>$1</em>');
+  return esc(s)
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/_([^_\s][^_]*)_/g,'<em>$1</em>')
+    .replace(/@([\w][^\s@,!?]*(?:\s[\w][^\s@,!?]*)?)/g,'<span class="chat-at">@$1</span>');
 }
 
 // ── TIME NAVIGATOR ──
@@ -1187,7 +1196,7 @@ function switchTab(mode){
   document.getElementById('auth-name-field').style.display = mode==='signup'?'block':'none';
   document.getElementById('auth-reset-view').style.display = isReset?'block':'none';
   // oculta campos normais no modo reset
-  document.querySelectorAll('.auth-field:not(#auth-name-field)').forEach(el=>el.style.display=isReset?'none':'');
+  document.querySelectorAll('#auth-screen .auth-field:not(#auth-name-field)').forEach(el=>{ if(!el.closest('#auth-reset-view')) el.style.display=isReset?'none':''; });
   document.getElementById('auth-tabs').style.display = isReset?'none':'';
   document.getElementById('auth-forgot-link').style.display = (mode==='login')?'block':'none';
   document.getElementById('auth-back-link').style.display = isReset?'':'none';
@@ -2024,9 +2033,53 @@ function chatWrapFmt(before, after){
   const newStart=start+before.length, newEnd=newStart+(sel||'texto').length;
   el.setSelectionRange(newStart,newEnd);
 }
+let _mentionIdx=0;
 function chatInputKeydown(e){
-  if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendChatMessage(); }
-  setTimeout(()=>{ const el=e.target; el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,80)+'px'; },0);
+  const drop=document.getElementById('chat-mention-drop');
+  if(drop){
+    const items=drop.querySelectorAll('.chat-mention-item');
+    if(e.key==='ArrowDown'){ e.preventDefault(); _mentionIdx=Math.min(_mentionIdx+1,items.length-1); items.forEach((el,i)=>el.classList.toggle('active',i===_mentionIdx)); return; }
+    if(e.key==='ArrowUp'){ e.preventDefault(); _mentionIdx=Math.max(_mentionIdx-1,0); items.forEach((el,i)=>el.classList.toggle('active',i===_mentionIdx)); return; }
+    if(e.key==='Enter'||e.key==='Tab'){ e.preventDefault(); items[_mentionIdx]&&items[_mentionIdx].click(); return; }
+    if(e.key==='Escape'){ drop.remove(); return; }
+  }
+  if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendChatMessage(); return; }
+  setTimeout(()=>{
+    const el=e.target; el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,80)+'px';
+    chatDetectMention(el);
+  },0);
+}
+
+function chatDetectMention(el){
+  const text=el.value, pos=el.selectionStart;
+  const before=text.slice(0,pos);
+  const match=before.match(/@([\w\s]*)$/);
+  if(!match){ const d=document.getElementById('chat-mention-drop'); if(d) d.remove(); return; }
+  const q=match[1].toLowerCase();
+  const others=Object.entries(chatProfiles).filter(([uid])=>uid!==currentUser.id);
+  const filtered=q?others.filter(([,n])=>n.toLowerCase().includes(q)):others;
+  if(!filtered.length){ const d=document.getElementById('chat-mention-drop'); if(d) d.remove(); return; }
+  _mentionIdx=0;
+  let drop=document.getElementById('chat-mention-drop');
+  if(!drop){ drop=document.createElement('div'); drop.id='chat-mention-drop'; drop.className='chat-mention-dropdown'; document.getElementById('chat-input-row').appendChild(drop); }
+  drop.innerHTML=filtered.slice(0,6).map(([uid,name],i)=>`
+    <div class="chat-mention-item${i===0?' active':''}" onmousedown="insertMention('${uid}','${esc(name)}');event.preventDefault();">
+      ${chatAvatar(uid,name,false)}
+      <div><div class="chat-mention-name">${esc(name)}</div>${chatCargos[uid]?`<div class="chat-mention-cargo">${esc(chatCargos[uid])}</div>`:''}</div>
+    </div>`).join('');
+}
+
+function insertMention(uid, name){
+  const el=document.getElementById('chat-input');
+  const pos=el.selectionStart;
+  const before=el.value.slice(0,pos);
+  const after=el.value.slice(pos);
+  const atStart=before.lastIndexOf('@');
+  el.value=before.slice(0,atStart)+'@'+name+' '+after;
+  el.focus();
+  const newPos=atStart+name.length+2;
+  el.setSelectionRange(newPos,newPos);
+  const drop=document.getElementById('chat-mention-drop'); if(drop) drop.remove();
 }
 
 function startChatPoll(){
@@ -2057,10 +2110,13 @@ async function chatCheckUnread(){
         _chatUnread[m.channel_id]=(_chatUnread[m.channel_id]||0)+1;
         hasNew=true;
         const senderName=chatProfiles[m.user_id]||'Alguém';
-        showBrowserNotif(senderName, m.body.length>60?m.body.slice(0,60)+'…':m.body);
-        // toast in-app (usa a última mensagem nova)
+        const myName=getStored('user_name_'+currentUser.id)||currentUser.email.split('@')[0];
+        const isMentioned=m.body.toLowerCase().includes('@'+myName.toLowerCase());
+        const preview=m.body.length>60?m.body.slice(0,60)+'…':m.body;
+        showBrowserNotif(isMentioned?'🔔 '+senderName+' mencionou você':senderName, preview);
         const ch=chatChannelList.find(c=>c.id===m.channel_id);
-        toastMsg={senderName, body:m.body, channelId:m.channel_id, channelName:ch?ch.name:'', channelType:ch?ch.type:'group'};
+        toastMsg={senderName:isMentioned?'🔔 '+senderName+' mencionou você':senderName, body:preview, channelId:m.channel_id, channelName:ch?ch.name:'', channelType:ch?ch.type:'group'};
+        if(isMentioned) playChatSound(); // som extra na menção
       }
       _chatLastSeen[m.channel_id]=m.created_at;
     }
