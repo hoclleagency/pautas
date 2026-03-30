@@ -326,7 +326,12 @@ html,body{background:#000;color:var(--text);font-family:'Syne',sans-serif;min-he
 .chat-del-yes{font-size:11px;font-family:'DM Mono',monospace;padding:3px 9px;background:#ff4545;color:#fff;border:none;border-radius:5px;cursor:pointer;}
 .chat-del-no{font-size:11px;font-family:'DM Mono',monospace;padding:3px 9px;background:transparent;color:var(--text-muted);border:1px solid var(--border);border-radius:5px;cursor:pointer;}
 .chat-edited-tag{font-size:9px;color:var(--text-hint);font-family:'DM Mono',monospace;margin-left:4px;}
-.chat-input-row{display:flex;gap:8px;padding:11px 13px;border-top:1px solid var(--border);flex-shrink:0;align-items:flex-end;}
+.chat-fmt-bar{display:flex;gap:2px;padding:5px 10px 0;flex-shrink:0;}
+.chat-fmt-btn{background:none;border:none;color:var(--text-hint);cursor:pointer;padding:3px 7px;border-radius:5px;font-size:12px;font-family:'DM Mono',monospace;transition:color 0.1s,background 0.1s;line-height:1;}
+.chat-fmt-btn:hover{color:var(--text);background:var(--surface3);}
+.chat-fmt-btn b{font-weight:800;}
+.chat-fmt-btn i{font-style:italic;}
+.chat-input-row{display:flex;gap:8px;padding:6px 13px 11px;border-top:1px solid var(--border);flex-shrink:0;align-items:flex-end;}
 .chat-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:18px;padding:8px 13px;font-size:13px;color:var(--text);font-family:'Syne',sans-serif;outline:none;resize:none;min-height:36px;max-height:80px;overflow-y:auto;line-height:1.4;}
 .chat-input:focus{border-color:var(--blue-border);}
 .chat-input::placeholder{color:var(--text-hint);}
@@ -567,6 +572,7 @@ function getArchivedByKey(key){ return archive.find(a=>a.key===key)||null; }
 function isActiveMonth(){ return currentKey()===activeKey() && viewingArchive===null; }
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function chatFmt(s){ return esc(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/_([^_\s][^_]*)_/g,'<em>$1</em>'); }
 
 // ── TIME NAVIGATOR ──
 function changeYear(delta){
@@ -1090,17 +1096,28 @@ function getStored(k){ return localStorage.getItem('hoclle_'+k); }
 function setStored(k,v){ localStorage.setItem('hoclle_'+k, v); }
 function rmStored(k){ localStorage.removeItem('hoclle_'+k); }
 
+// Auth tokens ficam no sessionStorage (isolado por aba) para evitar deslogar outra aba
+// Backup por uid no localStorage para restaurar ao reabrir a aba
 function setSession(token, refresh, user){
   sbToken=token; sbRefresh=refresh; currentUser=user;
-  setStored('token',token); setStored('refresh',refresh); setStored('user',JSON.stringify(user));
+  sessionStorage.setItem('hoclle_token', token);
+  sessionStorage.setItem('hoclle_refresh', refresh);
+  sessionStorage.setItem('hoclle_user', JSON.stringify(user));
+  // backup por uid para cold-start (nova aba)
+  try{ localStorage.setItem('hoclle_sess_'+user.id, JSON.stringify({token,refresh,user}));
+       localStorage.setItem('hoclle_last_uid', user.id); }catch(_){}
 }
 function clearSession(){
+  const uid=currentUser?currentUser.id:null;
   sbToken=null; sbRefresh=null; currentUser=null;
-  rmStored('token'); rmStored('refresh'); rmStored('user');
+  sessionStorage.removeItem('hoclle_token');
+  sessionStorage.removeItem('hoclle_refresh');
+  sessionStorage.removeItem('hoclle_user');
+  if(uid){ localStorage.removeItem('hoclle_sess_'+uid); localStorage.removeItem('hoclle_last_uid'); }
 }
 
 async function tryRefresh(){
-  const r = getStored('refresh'); if(!r) return false;
+  const r = sessionStorage.getItem('hoclle_refresh'); if(!r) return false;
   try{
     const res = await fetch(SB_URL+'/auth/v1/token?grant_type=refresh_token',{
       method:'POST', headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
@@ -1416,13 +1433,26 @@ async function initApp(){
 
 // ── STARTUP ──
 async function startup(){
-  const token=getStored('token'), userStr=getStored('user');
+  // 1. tenta sessionStorage (sessão da aba atual)
+  let token=sessionStorage.getItem('hoclle_token');
+  let refresh=sessionStorage.getItem('hoclle_refresh');
+  let userStr=sessionStorage.getItem('hoclle_user');
+  // 2. cold-start: tenta backup do último uid no localStorage
+  if(!token){
+    const lastUid=localStorage.getItem('hoclle_last_uid');
+    if(lastUid){
+      try{
+        const s=JSON.parse(localStorage.getItem('hoclle_sess_'+lastUid)||'null');
+        if(s){ token=s.token; refresh=s.refresh; userStr=JSON.stringify(s.user); }
+      }catch(_){}
+    }
+  }
   if(token && userStr){
     try{
       const res=await fetch(SB_URL+'/auth/v1/user',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+token}});
       if(res.ok){
         const user=await res.json();
-        setSession(token, getStored('refresh'), user);
+        setSession(token, refresh, user);
         await initApp(); return;
       } else {
         const refreshed=await tryRefresh();
@@ -1573,6 +1603,7 @@ function chatGoBack(){
   document.getElementById('chat-list-view').style.display='';
   document.getElementById('chat-msgs-view').style.display='none';
   document.getElementById('chat-input-row').style.display='none';
+  document.getElementById('chat-fmt-bar').style.display='none';
   document.getElementById('chat-back-btn').style.display='none';
   const actBtn=document.getElementById('chat-group-actions-btn');
   if(actBtn) actBtn.style.display='none';
@@ -1632,6 +1663,7 @@ async function chatOpenChannel(channelId,name,type){
   const mv=document.getElementById('chat-msgs-view');
   mv.style.display='flex'; mv.style.flexDirection='column';
   document.getElementById('chat-input-row').style.display='';
+  document.getElementById('chat-fmt-bar').style.display='';
   document.getElementById('chat-back-btn').style.display='';
   document.getElementById('chat-panel-title').textContent=type==='group'?'# '+name:name;
   // mostrar botão de ações para grupos (exceto geral para admins, qualquer um pode sair)
@@ -1687,7 +1719,7 @@ function renderChatMessages(){
           <button class="chat-act-btn" onclick="chatStartEdit('${m.id}')" title="Editar"><svg width="11" height="11" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg></button>
           <button class="chat-act-btn del" onclick="chatShowDelete('${m.id}')" title="Apagar"><svg width="11" height="11" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
         </div>`:''}
-        <div class="chat-bubble" id="cbubble-${m.id}">${esc(m.body)}</div>
+        <div class="chat-bubble" id="cbubble-${m.id}">${chatFmt(m.body)}</div>
         <div class="chat-msg-time">${time}${editedTag}</div>
       </div>
     </div>`;
@@ -1766,6 +1798,17 @@ async function sendChatMessage(){
   chatScrollBottom();
 }
 
+function chatWrapFmt(before, after){
+  const el=document.getElementById('chat-input');
+  if(!el) return;
+  const start=el.selectionStart, end=el.selectionEnd;
+  const sel=el.value.slice(start,end);
+  const replacement=before+(sel||'texto')+after;
+  el.value=el.value.slice(0,start)+replacement+el.value.slice(end);
+  el.focus();
+  const newStart=start+before.length, newEnd=newStart+(sel||'texto').length;
+  el.setSelectionRange(newStart,newEnd);
+}
 function chatInputKeydown(e){
   if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendChatMessage(); }
   setTimeout(()=>{ const el=e.target; el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,80)+'px'; },0);
@@ -2113,6 +2156,10 @@ async function leaveGroup(){
   <!-- mensagens -->
   <div class="chat-msgs" id="chat-msgs-view" style="display:none;"></div>
   <!-- input -->
+  <div class="chat-fmt-bar" id="chat-fmt-bar" style="display:none;">
+    <button class="chat-fmt-btn" onclick="chatWrapFmt('**','**')" title="Negrito"><b>B</b></button>
+    <button class="chat-fmt-btn" onclick="chatWrapFmt('_','_')" title="Itálico"><i>I</i></button>
+  </div>
   <div class="chat-input-row" id="chat-input-row" style="display:none;">
     <textarea class="chat-input" id="chat-input" placeholder="Mensagem..." rows="1" onkeydown="chatInputKeydown(event)"></textarea>
     <button class="chat-send-btn" onclick="sendChatMessage()" title="Enviar">
