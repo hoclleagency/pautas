@@ -1381,6 +1381,9 @@ async function initApp(){
   setInterval(async () => {
     try { await sbFetch('/rest/v1/configuracoes?user_id=eq.'+currentUser.id+'&limit=1'); } catch{}
   }, FIVE_DAYS);
+  // mostra botão do chat imediatamente após login
+  const _fab=document.getElementById('chat-fab');
+  if(_fab) _fab.style.display='';
   // inicializa chat
   initChat().catch(()=>{});
 }
