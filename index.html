@@ -1457,9 +1457,18 @@ async function saveToDB(){
 async function saveArchiveToDB(){
   if(!currentUser||!archive.length) return;
   try{
-    await sbFetch('/rest/v1/arquivo?user_id=eq.'+currentUser.id,{method:'DELETE'});
-    await sbFetch('/rest/v1/arquivo',{method:'POST',headers:{'Prefer':'return=minimal'},
-      body:JSON.stringify(archive.map(a=>({user_id:currentUser.id,periodo:a.key||a.month,closed_at:a.closedAt,entregas:a.tasks})))});
+    // upsert por periodo para evitar perda de dados se o INSERT falhar
+    const rows=archive.map(a=>({user_id:currentUser.id,periodo:a.key||a.month,closed_at:a.closedAt,entregas:a.tasks}));
+    const res=await sbFetch('/rest/v1/arquivo',{method:'POST',
+      headers:{'Prefer':'resolution=merge-duplicates,return=minimal',
+               'Content-Type':'application/json'},
+      body:JSON.stringify(rows)});
+    if(!res.ok){
+      // fallback: tenta DELETE+INSERT só se upsert falhar
+      await sbFetch('/rest/v1/arquivo?user_id=eq.'+currentUser.id,{method:'DELETE'});
+      await sbFetch('/rest/v1/arquivo',{method:'POST',headers:{'Prefer':'return=minimal'},
+        body:JSON.stringify(rows)});
+    }
   }catch(e){console.error('archive error',e);}
 }
 
