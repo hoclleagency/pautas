@@ -1714,7 +1714,7 @@ async function chatOpenChannel(channelId,name,type){
   document.getElementById('chat-panel-title').textContent=type==='group'?'# '+name:name;
   // mostrar botão de ações para grupos (exceto geral para admins, qualquer um pode sair)
   const actBtn=document.getElementById('chat-group-actions-btn');
-  if(actBtn) actBtn.style.display=(type==='group'&&name!=='geral')?'':'none';
+  if(actBtn) actBtn.style.display=type==='group'?'':'none';
   _chatUnread[channelId]=0;
   setStored('chat_unread',JSON.stringify(_chatUnread));
   updateChatBadge();
@@ -2041,15 +2041,16 @@ function toggleGroupActionsMenu(){
   let menu=document.getElementById('chat-group-menu');
   if(menu){ menu.remove(); return; }
   const isAdmin=chatChannelAdmins[chatActiveId]===currentUser.id;
+  const isGeral=chatActiveName==='geral';
   menu=document.createElement('div');
   menu.id='chat-group-menu'; menu.className='chat-group-menu';
   let items='';
   if(isAdmin){
     items+=`<button class="chat-group-menu-item" onclick="renameGroup()">Renomear grupo</button>`;
-    items+=`<button class="chat-group-menu-item danger" onclick="deleteGroup()">Apagar grupo</button>`;
-  } else {
-    items+=`<button class="chat-group-menu-item danger" onclick="leaveGroup()">Sair do grupo</button>`;
+    if(!isGeral) items+=`<button class="chat-group-menu-item danger" onclick="deleteGroup()">Apagar grupo</button>`;
   }
+  if(!isGeral) items+=`<button class="chat-group-menu-item danger" onclick="leaveGroup()">Sair do grupo</button>`;
+  if(!items) items=`<div style="padding:9px 14px;font-size:11px;color:var(--text-hint);font-family:'DM Mono',monospace;">Apenas o admin pode editar</div>`;
   menu.innerHTML=items;
   document.getElementById('chat-group-actions-btn').after(menu);
   // fechar ao clicar fora
