@@ -767,7 +767,7 @@ function addTask(){
 
 // ── SETTINGS ──
 // ── DECK ──
-function openDeck(cliente){ const url=decks[cliente]; if(url) window.open(url,'_blank','noopener'); }
+function openDeck(cliente){ const url=(decks[currentKey()]||{})[cliente]; if(url) window.open(url,'_blank','noopener'); }
 
 let _deckClickTimer=null;
 function deckClick(c,e){
@@ -784,8 +784,9 @@ function editDeck(cliente){ openDeckModal(cliente); }
 function openDeckModal(preCliente){
   const modal=document.getElementById('deck-modal');
   const sel=document.getElementById('deck-cliente-sel');
-  sel.innerHTML=clientes.map(c=>`<option value="${esc(c)}">${esc(c)}${decks[c]?' ✓':''}</option>`).join('');
-  const sem=clientes.find(c=>!decks[c]);
+  const monthDecks=decks[currentKey()]||{};
+  sel.innerHTML=clientes.map(c=>`<option value="${esc(c)}">${esc(c)}${monthDecks[c]?' ✓':''}</option>`).join('');
+  const sem=clientes.find(c=>!monthDecks[c]);
   sel.value=preCliente||(sem||clientes[0]||'');
   deckSelChange();
   modal.classList.add('open');
@@ -793,16 +794,20 @@ function openDeckModal(preCliente){
 function closeDeckModal(){ document.getElementById('deck-modal').classList.remove('open'); }
 function deckSelChange(){
   const c=document.getElementById('deck-cliente-sel').value;
-  document.getElementById('deck-url-inp').value=decks[c]||'';
+  document.getElementById('deck-url-inp').value=(decks[currentKey()]||{})[c]||'';
 }
 function saveDeck(){
   const c=document.getElementById('deck-cliente-sel').value;
   const url=document.getElementById('deck-url-inp').value.trim();
   if(!c) return;
-  if(url) decks[c]=url; else delete decks[c];
+  if(!decks[currentKey()]) decks[currentKey()]={};
+  if(url) decks[currentKey()][c]=url; else delete decks[currentKey()][c];
   save(); render(); closeDeckModal();
 }
-function deleteDeck(c){ delete decks[c]; save(); render(); }
+function deleteDeck(c){
+  if(decks[currentKey()]) delete decks[currentKey()][c];
+  save(); render();
+}
 
 
 function openSettings(){ renderSettingsLists(); document.getElementById('settings-modal').classList.add('open'); }
@@ -985,7 +990,7 @@ function render(){
     headerActions.insertBefore(deckBtn, headerActions.firstChild);
   }
   const deckSvg=`<svg width="13" height="13" style="flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>`;
-  const deckEntries=Object.entries(decks).filter(([,url])=>url);
+  const deckEntries=Object.entries(decks[key]||{}).filter(([,url])=>url);
   const editSvg=`<svg width="9" height="9" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>`;
   const delSvg=`<svg width="9" height="9" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`;
   let deckHtml=deckEntries.map(([c,])=>`<div class="btn-deck-wrap">
