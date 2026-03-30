@@ -1388,7 +1388,7 @@ async function loadFromDB(){
     const er=await sbFetch('/rest/v1/entregas?user_id=eq.'+currentUser.id+'&order=ordem.asc,created_at.asc');
     if(er.ok){
       const ents=await er.json();
-      tasks=ents.map((e)=>({id:nextId(),dbId:e.id,dia:e.dia,cliente:e.cliente,formato:e.formato,fases:e.fases||[],faseCustom:e.fase_custom||'',desc:e.descricao,notes:e.notes||'',done:e.done,periodo:normalizePeriodo(e.periodo)}));
+      tasks=ents.map((e)=>({id:nextId(),dbId:e.id,dia:e.dia,cliente:e.cliente,formato:e.formato,fases:e.fases||[],faseCustom:e.fase_custom||'',desc:e.descricao,notes:e.notes||'',link:e.link||'',done:e.done,periodo:normalizePeriodo(e.periodo)}));
     }
     // arquivo
     const ar=await sbFetch('/rest/v1/arquivo?user_id=eq.'+currentUser.id+'&order=created_at.desc');
@@ -1414,7 +1414,7 @@ async function saveToDB(){
     if(!delRes.ok){showSaveIndicator('error','✕ erro ao salvar');console.error('Erro DELETE:',await delRes.text());return;}
     if(tasks.length){
       const insRes=await sbFetch('/rest/v1/entregas',{method:'POST',headers:{'Prefer':'return=minimal'},
-        body:JSON.stringify(tasks.map((t,i)=>({user_id:currentUser.id,dia:t.dia,cliente:t.cliente,formato:t.formato||'',fases:t.fases||[],fase_custom:t.faseCustom||'',descricao:t.desc,notes:t.notes||'',done:t.done,ordem:i,periodo:t.periodo||activeKey()})))});
+        body:JSON.stringify(tasks.map((t,i)=>({user_id:currentUser.id,dia:t.dia,cliente:t.cliente,formato:t.formato||'',fases:t.fases||[],fase_custom:t.faseCustom||'',descricao:t.desc,notes:t.notes||'',link:t.link||'',done:t.done,ordem:i,periodo:t.periodo||activeKey()})))});
       if(!insRes.ok){showSaveIndicator('error','✕ erro ao salvar');console.error('Erro INSERT:',await insRes.text());return;}
     }
     await sbFetch('/rest/v1/configuracoes?user_id=eq.'+currentUser.id,{method:'DELETE'});
@@ -1759,10 +1759,10 @@ let _chatPollTimer=null, _chatUnread={}, _chatLastSeen={}, _chatToastTimer=null;
 async function initChat(){
   if(!currentUser) return;
   const displayName=getStored('user_name_'+currentUser.id)||currentUser.email.split('@')[0];
+  const myPhoto=getStored('user_photo_'+currentUser.id)||'';
   await sbFetch('/rest/v1/profiles',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
-    body:JSON.stringify({user_id:currentUser.id,name:displayName,updated_at:new Date().toISOString()})});
-  const pr=await sbFetch('/rest/v1/profiles?select=user_id,name,cargo,photo');
-  if(pr.ok)(await pr.json()).forEach(p=>{ chatProfiles[p.user_id]=p.name||''; chatCargos[p.user_id]=p.cargo||''; chatPhotos[p.user_id]=p.photo||''; });
+    body:JSON.stringify({user_id:currentUser.id,name:displayName,photo:myPhoto,updated_at:new Date().toISOString()})});
+  await chatRefreshProfiles();
   _chatUnread=JSON.parse(getStored('chat_unread')||'{}');
   _chatLastSeen=JSON.parse(getStored('chat_lastseen')||'{}');
   await chatLoadChannels();
@@ -1778,6 +1778,10 @@ async function initChat(){
   startChatPoll();
 }
 
+async function chatRefreshProfiles(){
+  const pr=await sbFetch('/rest/v1/profiles?select=user_id,name,cargo,photo');
+  if(pr.ok)(await pr.json()).forEach(p=>{ chatProfiles[p.user_id]=p.name||''; chatCargos[p.user_id]=p.cargo||''; if(p.photo) chatPhotos[p.user_id]=p.photo; });
+}
 async function chatLoadChannels(){
   const cr=await sbFetch('/rest/v1/channels?select=id,name,type,created_by&order=type.desc,name.asc');
   if(!cr.ok) return;
@@ -1810,6 +1814,7 @@ async function chatGetOrCreateDM(otherUserId){
 }
 
 function toggleChat(){
+  if(chatOpen) chatSaveDraft();
   chatOpen=!chatOpen;
   document.getElementById('chat-panel').classList.toggle('open',chatOpen);
   const sidebarBtn=document.getElementById('btn-chat-sidebar');
@@ -1820,7 +1825,15 @@ function toggleChat(){
   }
 }
 
+function chatSaveDraft(){
+  const inp=document.getElementById('chat-input');
+  if(!inp||!chatActiveId) return;
+  const val=inp.value;
+  if(val.trim()) setStored('chat_draft_'+chatActiveId,val);
+  else{ try{localStorage.removeItem('hoclle_chat_draft_'+chatActiveId);}catch(_){} }
+}
 function chatGoBack(){
+  chatSaveDraft();
   chatView='list'; chatActiveId=null;
   document.getElementById('chat-list-view').style.display='';
   document.getElementById('chat-msgs-view').style.display='none';
@@ -1834,11 +1847,12 @@ function chatGoBack(){
   renderChatList();
 }
 
-function chatAvatar(uid,label,isGroup){
-  if(isGroup) return `<div class="chat-av group">#</div>`;
+function chatAvatar(uid,label,isGroup,small){
+  const sm=small?'width:22px;height:22px;font-size:10px;':'';
+  if(isGroup) return `<div class="chat-av group" style="${sm}">#</div>`;
   const photo=chatPhotos[uid];
-  if(photo) return `<div class="chat-av" style="background:none;padding:0;overflow:hidden;"><img src="${photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/></div>`;
-  return `<div class="chat-av">${esc((label||'?').charAt(0).toUpperCase())}</div>`;
+  if(photo) return `<div class="chat-av" style="background:none;padding:0;overflow:hidden;${sm}"><img src="${photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/></div>`;
+  return `<div class="chat-av" style="${sm}">${esc((label||'?').charAt(0).toUpperCase())}</div>`;
 }
 function renderChatList(){
   const el=document.getElementById('chat-list-view');
@@ -1892,9 +1906,14 @@ async function chatOpenChannel(channelId,name,type){
   _chatUnread[channelId]=0;
   setStored('chat_unread',JSON.stringify(_chatUnread));
   updateChatBadge();
+  // restaura rascunho
+  const draft=getStored('chat_draft_'+channelId)||'';
+  const inp=document.getElementById('chat-input');
+  if(inp) inp.value=draft;
+  chatRefreshProfiles();
   await chatLoadMessages();
-  chatScrollBottom();
-  document.getElementById('chat-input').focus();
+  chatScrollBottom(true);
+  if(inp) inp.focus();
 }
 
 async function chatOpenDM(otherUserId){
@@ -1942,7 +1961,7 @@ function renderChatMessages(){
         <div class="chat-msg-time">${time}${editedTag}</div>
       </div>`;
     } else {
-      const avatarHtml=isFirst?chatAvatar(m.user_id,name,false):`<div style="width:26px;flex-shrink:0;"></div>`;
+      const avatarHtml=isFirst?chatAvatar(m.user_id,name,false,true):`<div style="width:22px;flex-shrink:0;"></div>`;
       h+=`<div class="chat-msg theirs" id="cmsg-${m.id}">
         <div class="chat-msg-left">${avatarHtml}</div>
         <div class="chat-msg-right">
@@ -2011,9 +2030,14 @@ async function chatConfirmDelete(id){
   chatScrollBottom();
 }
 
-function chatScrollBottom(){
+function chatIsAtBottom(){
   const el=document.getElementById('chat-msgs-view');
-  if(el) el.scrollTop=el.scrollHeight;
+  if(!el) return true;
+  return el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+}
+function chatScrollBottom(force){
+  const el=document.getElementById('chat-msgs-view');
+  if(el&&(force||chatIsAtBottom())) el.scrollTop=el.scrollHeight;
 }
 
 async function sendChatMessage(){
@@ -2021,10 +2045,11 @@ async function sendChatMessage(){
   const body=inp.value.trim();
   if(!body||!chatActiveId) return;
   inp.value=''; inp.style.height='auto';
+  try{localStorage.removeItem('hoclle_chat_draft_'+chatActiveId);}catch(_){}
   await sbFetch('/rest/v1/messages',{method:'POST',headers:{'Prefer':'return=minimal'},
     body:JSON.stringify({channel_id:chatActiveId,user_id:currentUser.id,body})});
   await chatLoadMessages();
-  chatScrollBottom();
+  chatScrollBottom(true);
 }
 
 const _emojiCats=[
@@ -2234,7 +2259,7 @@ function startChatPoll(){
   clearInterval(_chatPollTimer);
   _chatPollTimer=setInterval(async()=>{
     if(!currentUser) return;
-    if(chatOpen&&chatView==='messages'&&chatActiveId){ await chatLoadMessages(); chatScrollBottom(); }
+    if(chatOpen&&chatView==='messages'&&chatActiveId){ await chatLoadMessages(); chatScrollBottom(false); }
     await chatCheckUnread();
   },2000);
 }
