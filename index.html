@@ -126,10 +126,13 @@ html,body{background:#000;color:var(--text);font-family:'Syne',sans-serif;min-he
 .btn-del:hover{color:var(--red);}
 .btn-move{background:none;border:none;cursor:pointer;color:var(--text-hint);padding:0 1px;flex-shrink:0;transition:color 0.15s;display:flex;align-items:center;}
 .btn-move:hover{color:var(--blue);}
-.move-popover{position:fixed;background:var(--surface2);border:1px solid var(--border-md);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.5);z-index:500;padding:4px 0;min-width:140px;}
-.move-popover-item{display:block;width:100%;padding:7px 14px;font-size:12px;font-family:'DM Mono',monospace;color:var(--text-muted);background:none;border:none;text-align:left;cursor:pointer;transition:all 0.1s;}
-.move-popover-item:hover{background:var(--surface3);color:var(--text);}
-.move-popover-label{padding:5px 14px 3px;font-size:10px;font-family:'DM Mono',monospace;color:var(--text-hint);letter-spacing:1px;text-transform:uppercase;}
+.move-popover{position:fixed;background:var(--surface2);border:1px solid var(--border-md);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.5);z-index:500;padding:10px 14px 12px;min-width:180px;}
+.move-popover-label{padding:0 0 8px;font-size:10px;font-family:'DM Mono',monospace;color:var(--text-hint);letter-spacing:1px;text-transform:uppercase;}
+.move-popover-selects{display:flex;gap:6px;margin-bottom:10px;}
+.move-popover-selects select{flex:1;background:var(--surface3);border:1px solid var(--border-md);border-radius:6px;color:var(--text);font-size:12px;font-family:'DM Mono',monospace;padding:5px 6px;cursor:pointer;outline:none;}
+.move-popover-selects select:focus{border-color:var(--blue);}
+.move-popover-btn{width:100%;padding:7px 0;background:var(--blue);border:none;border-radius:6px;color:#000;font-size:12px;font-family:'Syne',sans-serif;font-weight:700;cursor:pointer;transition:opacity 0.15s;}
+.move-popover-btn:hover{opacity:0.85;}
 .empty-state{text-align:center;padding:3rem 2rem;color:var(--text-hint);font-size:12px;border:1px dashed var(--border);border-radius:10px;font-family:'DM Mono',monospace;line-height:2.4;}
 .empty-cta{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:4rem 2rem;text-align:center;}
 .empty-cta-icon{width:56px;height:56px;border-radius:50%;background:var(--blue-dim);border:1px solid var(--blue-border);display:flex;align-items:center;justify-content:center;color:var(--blue);}
@@ -1100,24 +1103,37 @@ function openMovePopover(taskId, btn){
   document.querySelectorAll('.move-popover').forEach(el=>el.remove());
   const t=tasks.find(x=>x.id===taskId); if(!t) return;
   const currentPeriod=t.periodo||activeKey();
-  // gera 6 meses anteriores + 6 próximos excluindo o período atual
-  const months=[];
-  for(let i=-6;i<=6;i++){
-    if(i===0) continue;
-    const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()+i);
-    const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-    if(key===currentPeriod) continue;
-    months.push(key);
-  }
+  const [cy,cm]=currentPeriod.split('-').map(Number);
+  const nowYear=new Date().getFullYear();
+  const years=[];
+  for(let y=nowYear-3;y<=nowYear+3;y++) years.push(y);
+  const monthNames=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const yearOpts=years.map(y=>`<option value="${y}"${y===cy?' selected':''}>${y}</option>`).join('');
+  const monthOpts=monthNames.map((mn,i)=>`<option value="${i+1}"${(i+1)===cm?' selected':''}>${mn}</option>`).join('');
   const pop=document.createElement('div');
   pop.className='move-popover';
-  pop.innerHTML=`<div class="move-popover-label">Mover para</div>`+
-    months.map(k=>`<button class="move-popover-item" onclick="moveTask(${taskId},'${k}')">${keyToLabel(k)}</button>`).join('');
+  pop.innerHTML=`
+    <div class="move-popover-label">Mover para</div>
+    <div class="move-popover-selects">
+      <select id="move-sel-month">${monthOpts}</select>
+      <select id="move-sel-year">${yearOpts}</select>
+    </div>
+    <button class="move-popover-btn" onclick="confirmMoveTask(${taskId})">Mover</button>`;
   document.body.appendChild(pop);
   const rect=btn.getBoundingClientRect();
-  pop.style.top=(rect.bottom+4)+'px';
-  pop.style.left=Math.min(rect.left,window.innerWidth-160)+'px';
-  setTimeout(()=>document.addEventListener('click',function h(){ pop.remove(); document.removeEventListener('click',h); }),0);
+  const top=rect.bottom+4;
+  const left=Math.min(rect.left,window.innerWidth-196);
+  pop.style.top=top+'px';
+  pop.style.left=left+'px';
+  setTimeout(()=>document.addEventListener('click',function h(e){
+    if(!pop.contains(e.target)){ pop.remove(); document.removeEventListener('click',h); }
+  }),0);
+}
+function confirmMoveTask(taskId){
+  const y=document.getElementById('move-sel-year').value;
+  const m=document.getElementById('move-sel-month').value;
+  const key=y+'-'+String(m).padStart(2,'0');
+  moveTask(taskId, key);
 }
 function moveTask(taskId, targetPeriod){
   document.querySelectorAll('.move-popover').forEach(el=>el.remove());
