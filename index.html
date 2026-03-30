@@ -327,7 +327,9 @@ html,body{background:#0d0d0d;color:var(--text);font-family:'Syne',sans-serif;min
 .chat-msg-left{flex-shrink:0;padding-top:2px;}
 .chat-msg-right{display:flex;flex-direction:column;max-width:210px;}
 .chat-msg-name{font-size:10px;color:var(--text-hint);margin-bottom:3px;font-family:'DM Mono',monospace;padding-left:2px;}
-.chat-bubble{padding:8px 12px;border-radius:16px;font-size:13px;line-height:1.45;word-break:break-word;}
+.chat-bubble{padding:8px 12px;border-radius:16px;font-size:13px;line-height:1.45;word-break:break-word;user-select:text;cursor:text;}
+.chat-bubble a{color:inherit;text-decoration:underline;text-underline-offset:2px;opacity:0.85;}
+.chat-bubble a:hover{opacity:1;}
 .chat-msg.mine .chat-bubble{background:var(--blue);color:#000;border-bottom-right-radius:4px;max-width:210px;}
 .chat-msg.theirs .chat-bubble{background:var(--surface2);color:var(--text);border-bottom-left-radius:4px;}
 .chat-msg-time{font-size:9px;color:var(--text-hint);margin-top:2px;font-family:'DM Mono',monospace;text-align:right;}
@@ -645,7 +647,8 @@ function chatFmt(s){
   return esc(s)
     .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
     .replace(/_([^_\s][^_]*)_/g,'<em>$1</em>')
-    .replace(/@([\w][^\s@,!?]*(?:\s[\w][^\s@,!?]*)?)/g,'<span class="chat-at">@$1</span>');
+    .replace(/@([\w][^\s@,!?]*(?:\s[\w][^\s@,!?]*)?)/g,'<span class="chat-at">@$1</span>')
+    .replace(/(https?:\/\/[^\s<>"]+)/g,'<a href="$1" target="_blank" rel="noopener" onclick="event.stopPropagation()">$1</a>');
 }
 
 // ── TIME NAVIGATOR ──
