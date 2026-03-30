@@ -2132,9 +2132,6 @@ function chatInputChanged(){
   const btn=document.getElementById('chat-send-btn');
   if(!inp||!btn) return;
   btn.classList.toggle('active', inp.value.trim().length>0);
-  // ícone: branco quando ativo, muted quando inativo
-  const svg=btn.querySelector('svg');
-  if(svg) svg.setAttribute('stroke', inp.value.trim().length>0 ? '#000' : 'var(--text-hint)');
 }
 function chatSendIfActive(){
   const inp=document.getElementById('chat-input');
