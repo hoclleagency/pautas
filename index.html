@@ -765,7 +765,7 @@ function openDeck(cliente){ const url=decks[cliente]; if(url) window.open(url,'_
 function openDeckModal(){
   const modal=document.getElementById('deck-modal');
   const sel=document.getElementById('deck-cliente-sel');
-  sel.innerHTML=clientes.map(c=>`<option value="${esc(c)}"${decks[c]?' (deck salvo)':''} >${esc(c)}${decks[c]?' ✓':''}</option>`).join('');
+  sel.innerHTML=clientes.map(c=>`<option value="${esc(c)}">${esc(c)}${decks[c]?' ✓':''}</option>`).join('');
   // pré-seleciona o primeiro cliente sem deck
   const sem=clientes.find(c=>!decks[c]);
   sel.value=sem||clientes[0]||'';
@@ -786,7 +786,7 @@ function saveDeck(){
 }
 function deleteDeck(c){ delete decks[c]; save(); render(); }
 
-document.getElementById('deck-modal').addEventListener('click',function(e){if(e.target===this)closeDeckModal();});
+
 function openSettings(){ renderSettingsLists(); document.getElementById('settings-modal').classList.add('open'); }
 function closeSettings(){ document.getElementById('settings-modal').classList.remove('open'); render(); }
 document.getElementById('settings-modal').addEventListener('click',function(e){if(e.target===this)closeSettings();});
@@ -2307,7 +2307,7 @@ async function leaveGroup(){
 </script>
 
 <!-- DECK MODAL -->
-<div class="modal-overlay" id="deck-modal">
+<div class="modal-overlay" id="deck-modal" onclick="if(event.target===this)closeDeckModal()">
   <div class="modal" style="width:380px;">
     <h2>deck por <em>cliente</em></h2>
     <div class="form-grid">
