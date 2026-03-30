@@ -896,8 +896,10 @@ function closeMonth(){
   const key = activeKey();
   archive.unshift({key, month:keyToLabel(key), tasks:JSON.parse(JSON.stringify(tasks)), closedAt:new Date().toLocaleDateString('pt-BR')});
   tasks=[];
-  navYear=NOW.getFullYear(); navMonth=NOW.getMonth(); viewingArchive=null;
-  save(); saveArchiveToDB(); hideCloseConfirm(); closeArchive(); render();
+  // navega para o próximo mês automaticamente
+  const next=new Date(NOW.getFullYear(), NOW.getMonth()+1, 1);
+  navYear=next.getFullYear(); navMonth=next.getMonth(); viewingArchive=null;
+  save(); saveArchiveToDB(); hideCloseConfirm(); closeCloseMonth(); render();
 }
 
 function renderArchiveContent(){
