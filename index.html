@@ -1007,7 +1007,7 @@ function render(){
       <button class="btn-deck-act del" onclick="deleteDeck('${esc(c)}');event.stopPropagation();" title="Apagar">${delSvg}</button>
     </div>
   </div>`).join('');
-  deckHtml+=`<button class="btn-deck-set" onclick="openDeckModal()" title="Gerenciar decks"><svg width="13" height="13" style="flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg>${deckEntries.length?'':'+ Deck'}</button>`;
+  deckHtml+=`<button class="btn-icon" onclick="openDeckModal()" title="Gerenciar decks"><svg width="16" height="16" style="display:block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg></button>`;
   deckBtn.innerHTML=deckHtml;
 
   // sidebar filters
