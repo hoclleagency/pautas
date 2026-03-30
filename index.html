@@ -62,8 +62,8 @@ html,body{background:#0d0d0d;color:var(--text);font-family:'Syne',sans-serif;min
 .btn-chat-sidebar{font-family:'DM Mono',monospace;font-size:11px;padding:9px 12px;background:transparent;color:var(--text-hint);border:1px solid var(--border);border-radius:6px;cursor:pointer;text-align:left;transition:all 0.15s;display:flex;align-items:center;gap:8px;position:relative;}
 .btn-chat-sidebar:hover,.btn-chat-sidebar.active{border-color:var(--blue-border);color:var(--blue);}
 .btn-chat-badge{background:#ff4545;color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0 3px;margin-left:auto;}
-.btn-close-month{font-family:'DM Mono',monospace;font-size:11px;padding:9px 12px;background:var(--blue);color:#000;border:none;border-radius:6px;cursor:pointer;transition:opacity 0.15s;display:flex;align-items:center;gap:8px;font-weight:600;}
-.btn-close-month:hover{opacity:0.85;}
+.btn-close-month{font-family:'DM Mono',monospace;font-size:11px;padding:9px 12px;background:transparent;color:var(--blue);border:1px solid rgba(0,189,247,0.35);border-radius:6px;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:8px;}
+.btn-close-month:hover{background:var(--blue-dim);border-color:var(--blue);}
 
 /* MAIN */
 .main{padding:2rem 2.5rem;background:#0d0d0d;}
@@ -520,7 +520,7 @@ span.chat-at{color:var(--blue);font-weight:700;}
         </div>
 
         <div style="display:flex;flex-direction:column;gap:6px;margin-top:auto;">
-          <button class="btn-archive" onclick="openCloseMonth()"><svg width="16" height="16" style="display:block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg> fechar mês</button>
+          <button class="btn-close-month" onclick="openCloseMonth()"><svg width="16" height="16" style="display:block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg> fechar mês</button>
           <button class="btn-archive" onclick="openArchive()"><svg width="16" height="16" style="display:block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg> histórico</button>
         </div>
 
