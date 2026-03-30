@@ -582,7 +582,7 @@ function checkIcon(done){
 let tasks = [];
 let clientes = ['Center Led','Aprender','Selm','H2E'];
 let formatos = ['ky','feed','carrossel','off','lettering','guia','reunião'];
-let decks = {}; // {periodKey: url} — link do deck Google Slides por mês
+let decks = {}; // {clienteName: url} — link do deck por cliente
 let archive = []; // [{key:'2026-03', month:'MAR/2026', tasks:[...], closedAt:'...'}]
 let filters = {status:null,cliente:null,formato:null,fase:null};
 let selectedPhases = [];
@@ -760,22 +760,33 @@ function addTask(){
 
 // ── SETTINGS ──
 // ── DECK ──
-function openDeck(){
-  const url = decks[currentKey()];
-  if(url) window.open(url,'_blank','noopener');
-}
-function promptDeck(){
-  const current = decks[currentKey()]||'';
-  const url = prompt('Cole o link do Google Apresentações:', current);
-  if(url === null) return; // cancelado
-  if(url.trim()){
-    decks[currentKey()] = url.trim();
-  } else {
-    delete decks[currentKey()];
-  }
-  save(); render();
-}
+function openDeck(cliente){ const url=decks[cliente]; if(url) window.open(url,'_blank','noopener'); }
 
+function openDeckModal(){
+  const modal=document.getElementById('deck-modal');
+  const sel=document.getElementById('deck-cliente-sel');
+  sel.innerHTML=clientes.map(c=>`<option value="${esc(c)}"${decks[c]?' (deck salvo)':''} >${esc(c)}${decks[c]?' ✓':''}</option>`).join('');
+  // pré-seleciona o primeiro cliente sem deck
+  const sem=clientes.find(c=>!decks[c]);
+  sel.value=sem||clientes[0]||'';
+  deckSelChange();
+  modal.classList.add('open');
+}
+function closeDeckModal(){ document.getElementById('deck-modal').classList.remove('open'); }
+function deckSelChange(){
+  const c=document.getElementById('deck-cliente-sel').value;
+  document.getElementById('deck-url-inp').value=decks[c]||'';
+}
+function saveDeck(){
+  const c=document.getElementById('deck-cliente-sel').value;
+  const url=document.getElementById('deck-url-inp').value.trim();
+  if(!c) return;
+  if(url) decks[c]=url; else delete decks[c];
+  save(); render(); closeDeckModal();
+}
+function deleteDeck(c){ delete decks[c]; save(); render(); }
+
+document.getElementById('deck-modal').addEventListener('click',function(e){if(e.target===this)closeDeckModal();});
 function openSettings(){ renderSettingsLists(); document.getElementById('settings-modal').classList.add('open'); }
 function closeSettings(){ document.getElementById('settings-modal').classList.remove('open'); render(); }
 document.getElementById('settings-modal').addEventListener('click',function(e){if(e.target===this)closeSettings();});
@@ -946,23 +957,20 @@ function render(){
     btnNew.disabled = (viewingArchive !== null);
   }
 
-  // botão deck
-  const deckUrl = decks[key];
+  // botões deck por cliente
   let deckBtn = document.getElementById('btn-deck-area');
   if(!deckBtn){
     deckBtn = document.createElement('div');
     deckBtn.id = 'btn-deck-area';
-    deckBtn.style.display='flex';
-    deckBtn.style.alignItems='center';
-    deckBtn.style.gap='4px';
+    deckBtn.style.cssText='display:flex;align-items:center;gap:4px;flex-wrap:wrap;';
     const headerActions = document.querySelector('.header-actions');
     headerActions.insertBefore(deckBtn, headerActions.firstChild);
   }
-  if(deckUrl){
-    deckBtn.innerHTML = `<button class="btn-deck" onclick="openDeck()" ondblclick="promptDeck();event.stopPropagation();" title="Abrir deck · clique duplo para editar link"><svg width="13" height="13" style="flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>Deck ${esc(keyToLabel(key))}</button>`;
-  } else {
-    deckBtn.innerHTML = `<button class="btn-deck-set" onclick="promptDeck()" title="Adicionar deck deste mês"><svg width="13" height="13" style="flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg>+ Deck</button>`;
-  }
+  const deckSvg=`<svg width="13" height="13" style="flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>`;
+  const deckEntries=Object.entries(decks).filter(([,url])=>url);
+  let deckHtml=deckEntries.map(([c,])=>`<button class="btn-deck" onclick="openDeck('${esc(c)}')" title="Abrir deck de ${esc(c)} · clique duplo para editar" ondblclick="openDeckModal();event.stopPropagation();">${deckSvg}Deck ${esc(c)}</button>`).join('');
+  deckHtml+=`<button class="btn-deck-set" onclick="openDeckModal()" title="Gerenciar decks"><svg width="13" height="13" style="flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg>${deckEntries.length?'':'+ Deck'}</button>`;
+  deckBtn.innerHTML=deckHtml;
 
   // sidebar filters
   const uc=[...new Set(displayTasks.map(t=>t.cliente))].filter(Boolean);
@@ -2297,6 +2305,27 @@ async function leaveGroup(){
 }
 
 </script>
+
+<!-- DECK MODAL -->
+<div class="modal-overlay" id="deck-modal">
+  <div class="modal" style="width:380px;">
+    <h2>deck por <em>cliente</em></h2>
+    <div class="form-grid">
+      <div class="form-full">
+        <label class="form-label">cliente</label>
+        <select class="form-select" id="deck-cliente-sel" onchange="deckSelChange()"></select>
+      </div>
+      <div class="form-full">
+        <label class="form-label">link do deck</label>
+        <input class="form-input" id="deck-url-inp" placeholder="https://docs.google.com/presentation/..."/>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeDeckModal()">cancelar</button>
+      <button class="btn-confirm" onclick="saveDeck()">salvar</button>
+    </div>
+  </div>
+</div>
 
 <!-- EDIT MODAL -->
 <div class="modal-overlay" id="edit-modal">
