@@ -520,7 +520,7 @@ span.chat-at{color:var(--blue);font-weight:700;}
         </div>
 
         <div style="display:flex;flex-direction:column;gap:6px;margin-top:auto;">
-          <button class="btn-close-month" onclick="openCloseMonth()"><svg width="16" height="16" style="display:block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg> fechar mês</button>
+          <button class="btn-archive" onclick="openCloseMonth()"><svg width="16" height="16" style="display:block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg> fechar mês</button>
           <button class="btn-archive" onclick="openArchive()"><svg width="16" height="16" style="display:block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg> histórico</button>
         </div>
 
@@ -2724,7 +2724,7 @@ async function leaveGroup(){
       <p style="font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:1.25rem;" id="close-step1-msg">Ao fechar o mês, todas as entregas são arquivadas e você começa um novo período do zero. Tudo fica salvo no histórico e pode ser consultado a qualquer momento.</p>
       <div style="display:flex;gap:8px;">
         <button class="btn-cancel" style="flex:1;" onclick="closeCloseMonth()">voltar</button>
-        <button class="btn-confirm" style="flex:1;" onclick="showCloseConfirm()">fechar mês →</button>
+        <button class="btn-confirm" style="flex:1;" onclick="showCloseConfirm()">fechar mês</button>
       </div>
     </div>
     <div id="close-month-step2" style="display:none;">
