@@ -894,11 +894,8 @@ function hideCloseConfirm(){
 }
 function closeMonth(){
   const key = activeKey();
-  const monthTasks = tasks.filter(t => (t.periodo||activeKey()) === key);
-  archive.unshift({key, month:keyToLabel(key), tasks:JSON.parse(JSON.stringify(monthTasks)), closedAt:new Date().toLocaleDateString('pt-BR')});
-  // mantém tasks de outros meses (ex: abril)
-  tasks = tasks.filter(t => (t.periodo||activeKey()) !== key);
-  // navega para o próximo mês automaticamente
+  archive.unshift({key, month:keyToLabel(key), tasks:JSON.parse(JSON.stringify(tasks)), closedAt:new Date().toLocaleDateString('pt-BR')});
+  tasks=[];
   const next=new Date(NOW.getFullYear(), NOW.getMonth()+1, 1);
   navYear=next.getFullYear(); navMonth=next.getMonth(); viewingArchive=null;
   save(); saveArchiveToDB(); hideCloseConfirm(); closeCloseMonth(); render();
