@@ -392,7 +392,7 @@ html,body{background:#0d0d0d;color:var(--text);font-family:'Syne',sans-serif;min
 .chat-send-btn.active:hover{opacity:0.82;}
 .chat-sched-btn{width:28px;height:28px;background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--text-muted);transition:all 0.15s;}
 .chat-sched-btn:hover{background:var(--surface2);color:var(--text);}
-.chat-sched-pop{position:absolute;bottom:calc(100% + 8px);right:0;background:var(--surface2);border:1px solid var(--border-md);border-radius:10px;padding:14px 14px 12px;box-shadow:0 4px 24px rgba(0,0,0,0.55);z-index:30;width:230px;display:none;}
+.chat-sched-pop{position:fixed;background:var(--surface2);border:1px solid var(--border-md);border-radius:10px;padding:14px 14px 12px;box-shadow:0 4px 24px rgba(0,0,0,0.55);z-index:1100;width:230px;display:none;}
 .chat-sched-pop.open{display:block;}
 .chat-sched-pop-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;font-family:'Syne',sans-serif;}
 .chat-sched-label{font-size:10px;color:var(--text-hint);font-family:'DM Mono',monospace;margin-bottom:3px;}
@@ -2134,18 +2134,21 @@ function toggleSchedulePop(e){
   if(!pop) return;
   _schedPopOpen=!_schedPopOpen;
   if(_schedPopOpen){
+    // posiciona acima do botão
+    const btn=document.getElementById('chat-sched-btn');
+    const rect=btn.getBoundingClientRect();
+    pop.style.bottom=(window.innerHeight-rect.top+8)+'px';
+    pop.style.right=(window.innerWidth-rect.right)+'px';
     // preenche data padrão = hoje
     const now=new Date();
-    const dateInp=document.getElementById('chat-sched-date');
-    dateInp.value=now.toISOString().slice(0,10);
-    // horas
+    document.getElementById('chat-sched-date').value=now.toISOString().slice(0,10);
     const hourSel=document.getElementById('chat-sched-hour');
     hourSel.innerHTML=Array.from({length:24},(_,i)=>`<option value="${i}">${String(i).padStart(2,'0')}h</option>`).join('');
     hourSel.value=now.getHours();
-    // minutos 0,15,30,45
     const minSel=document.getElementById('chat-sched-min');
     minSel.innerHTML=['00','15','30','45'].map(m=>`<option value="${m}">${m}min</option>`).join('');
     minSel.value=['00','15','30','45'].reduce((best,m)=>Math.abs(parseInt(m)-now.getMinutes())<Math.abs(parseInt(best)-now.getMinutes())?m:best);
+    const err=document.getElementById('chat-sched-err'); if(err) err.style.display='none';
   }
   pop.classList.toggle('open',_schedPopOpen);
 }
@@ -2161,13 +2164,15 @@ document.addEventListener('click',function(e){
 async function confirmScheduleMessage(){
   const inp=document.getElementById('chat-input');
   const body=inp.value.trim();
+  const err=document.getElementById('chat-sched-err');
+  function showErr(msg){ if(err){err.textContent=msg;err.style.display='block';} }
   if(!body||!chatActiveId){ closeSchedulePop(); return; }
   const dateVal=document.getElementById('chat-sched-date').value;
   const hourVal=document.getElementById('chat-sched-hour').value;
   const minVal=document.getElementById('chat-sched-min').value;
-  if(!dateVal){ alert('Escolha uma data.'); return; }
+  if(!dateVal){ showErr('Escolha uma data.'); return; }
   const scheduled_at=new Date(`${dateVal}T${String(hourVal).padStart(2,'0')}:${minVal}:00`).toISOString();
-  if(new Date(scheduled_at)<=new Date()){ alert('Escolha um horário no futuro.'); return; }
+  if(new Date(scheduled_at)<=new Date()){ showErr('Escolha um horário no futuro.'); return; }
   inp.value=''; inp.style.height='auto';
   chatInputChanged();
   try{localStorage.removeItem('hoclle_chat_draft_'+chatActiveId);}catch(_){}
@@ -2791,18 +2796,7 @@ async function leaveGroup(){
           <button class="chat-fmt-btn" onclick="chatWrapFmt('**','**')" title="Negrito"><b>B</b></button>
           <button class="chat-fmt-btn" onclick="chatWrapFmt('_','_')" title="Itálico"><i>I</i></button>
         </div>
-        <div style="display:flex;align-items:center;gap:5px;position:relative;">
-          <div class="chat-sched-pop" id="chat-sched-pop">
-            <div class="chat-sched-pop-title">Programar mensagem</div>
-            <div class="chat-sched-label">Data</div>
-            <input type="date" class="chat-sched-input" id="chat-sched-date"/>
-            <div class="chat-sched-label">Horário</div>
-            <div class="chat-sched-row">
-              <select class="chat-sched-select" id="chat-sched-hour"></select>
-              <select class="chat-sched-select" id="chat-sched-min"></select>
-            </div>
-            <button class="chat-sched-confirm" onclick="confirmScheduleMessage()">Programar</button>
-          </div>
+        <div style="display:flex;align-items:center;gap:5px;">
           <button class="chat-sched-btn" id="chat-sched-btn" onclick="toggleSchedulePop(event)" title="Programar envio">
             <svg width="12" height="12" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           </button>
@@ -2815,5 +2809,18 @@ async function leaveGroup(){
   </div>
 </div>
 
+<!-- popup agendamento (fora de qualquer overflow:hidden) -->
+<div class="chat-sched-pop" id="chat-sched-pop">
+  <div class="chat-sched-pop-title">Programar mensagem</div>
+  <div class="chat-sched-label">Data</div>
+  <input type="date" class="chat-sched-input" id="chat-sched-date"/>
+  <div class="chat-sched-label">Horário</div>
+  <div class="chat-sched-row">
+    <select class="chat-sched-select" id="chat-sched-hour"></select>
+    <select class="chat-sched-select" id="chat-sched-min"></select>
+  </div>
+  <div id="chat-sched-err" style="font-size:10px;color:#ff4545;font-family:'DM Mono',monospace;margin-bottom:6px;display:none;"></div>
+  <button class="chat-sched-confirm" onclick="confirmScheduleMessage()">Programar</button>
+</div>
 </body>
 </html>
