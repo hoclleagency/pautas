@@ -90,6 +90,8 @@ html,body{background:#0d0d0d;color:var(--text);font-family:'Syne',sans-serif;min
 .btn-deck{font-family:'DM Mono',monospace;font-size:11px;height:36px;padding:0 14px;background:transparent;border:1px solid rgba(0,189,247,0.35);color:rgba(0,189,247,0.9);border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all 0.15s;white-space:nowrap;}
 .btn-deck:hover{background:rgba(0,189,247,0.08);border-color:rgba(0,189,247,0.6);}
 .task-note{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.07);font-size:12px;color:var(--text-muted);line-height:1.6;white-space:pre-wrap;}
+.task-link{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:11px;font-family:'DM Mono',monospace;color:var(--blue);opacity:0.75;text-decoration:none;transition:opacity 0.15s;}
+.task-link:hover{opacity:1;}
 
 /* TASKS */
 .day-section{margin-bottom:2rem;}
@@ -319,15 +321,18 @@ html,body{background:#0d0d0d;color:var(--text);font-family:'Syne',sans-serif;min
 .chat-li-preview{font-size:11px;color:var(--text-hint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;font-family:'DM Mono',monospace;}
 .chat-li-unread{background:var(--blue);color:#000;font-size:10px;font-family:'DM Mono',monospace;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;flex-shrink:0;}
 .chat-msgs{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:4px;}
-.chat-msg{display:flex;flex-direction:column;max-width:82%;}
-.chat-msg.mine{align-self:flex-end;align-items:flex-end;}
-.chat-msg.theirs{align-self:flex-start;align-items:flex-start;}
-.chat-msg-name{font-size:10px;color:var(--text-hint);margin-bottom:2px;font-family:'DM Mono',monospace;}
+.chat-msg{display:flex;align-items:flex-start;gap:8px;margin-bottom:2px;}
+.chat-msg.mine{flex-direction:row-reverse;align-self:flex-end;}
+.chat-msg.theirs{flex-direction:row;align-self:flex-start;}
+.chat-msg-left{flex-shrink:0;padding-top:2px;}
+.chat-msg-right{display:flex;flex-direction:column;max-width:210px;}
+.chat-msg-name{font-size:10px;color:var(--text-hint);margin-bottom:3px;font-family:'DM Mono',monospace;padding-left:2px;}
 .chat-bubble{padding:8px 12px;border-radius:16px;font-size:13px;line-height:1.45;word-break:break-word;}
-.chat-msg.mine .chat-bubble{background:var(--blue);color:#000;border-bottom-right-radius:4px;}
+.chat-msg.mine .chat-bubble{background:var(--blue);color:#000;border-bottom-right-radius:4px;max-width:210px;}
 .chat-msg.theirs .chat-bubble{background:var(--surface2);color:var(--text);border-bottom-left-radius:4px;}
-.chat-msg-time{font-size:9px;color:var(--text-hint);margin-top:2px;font-family:'DM Mono',monospace;}
-.chat-msg-actions{display:none;gap:3px;margin-bottom:2px;}
+.chat-msg-time{font-size:9px;color:var(--text-hint);margin-top:2px;font-family:'DM Mono',monospace;text-align:right;}
+.chat-msg.theirs .chat-msg-time{text-align:left;}
+.chat-msg-actions{display:none;gap:3px;align-items:center;align-self:center;}
 .chat-msg.mine:hover .chat-msg-actions{display:flex;}
 .chat-act-btn{background:var(--surface2);border:1px solid var(--border);border-radius:5px;cursor:pointer;color:var(--text-muted);padding:3px 5px;display:flex;align-items:center;transition:all 0.12s;}
 .chat-act-btn:hover{color:var(--text);border-color:var(--border-md);}
@@ -545,6 +550,7 @@ span.chat-at{color:var(--blue);font-weight:700;}
         <input class="custom-phase-input" id="custom-phase-input" placeholder="descreva a fase..." style="display:none;"/>
       </div>
       <div class="form-full"><label class="form-label">descrição</label><textarea class="form-input" id="f-desc" placeholder="descreva a tarefa..." rows="2" style="resize:vertical;font-family:inherit;"></textarea></div>
+      <div class="form-full"><label class="form-label">link <span style="color:var(--text-hint);font-size:10px;">(opcional — drive, pasta, ref...)</span></label><input class="form-input" id="f-link" placeholder="https://..." type="url"/></div>
       <div class="form-full"><label class="form-label">observações <span style="color:var(--text-hint);font-size:10px;">(opcional)</span></label><textarea class="form-input" id="f-notes" placeholder="referências, contexto, instruções..." style="resize:vertical;min-height:72px;font-family:inherit;"></textarea></div>
     </div>
     <div class="modal-actions">
@@ -746,6 +752,7 @@ function openAddModal(){
   document.getElementById('custom-phase-input').value='';
   document.getElementById('f-desc').value='';
   document.getElementById('f-notes').value='';
+  document.getElementById('f-link').value='';
   document.getElementById('add-modal').classList.add('open');
   setTimeout(()=>document.getElementById('f-desc').focus(),80);
 }
@@ -761,11 +768,12 @@ function addTask(){
   const desc=document.getElementById('f-desc').value.trim();
   const faseCustom=document.getElementById('custom-phase-input').value.trim();
   const notes=document.getElementById('f-notes').value.trim();
+  const link=document.getElementById('f-link').value.trim();
   if(!dia){alert('Selecione o dia.');return;}
   if(!cliente){alert('Selecione o cliente.');return;}
   if(!desc){alert('Preencha a descrição.');return;}
   _addingTask = true;
-  tasks.push({id:nextId(),dia,cliente,formato,fases:selectedPhases.slice(),faseCustom,desc,notes,done:false,periodo:currentKey()});
+  tasks.push({id:nextId(),dia,cliente,formato,fases:selectedPhases.slice(),faseCustom,desc,notes,link,done:false,periodo:currentKey()});
   save(); closeAddModal(); render();
   setTimeout(()=>{ _addingTask = false; }, 500);
 }
@@ -1082,6 +1090,7 @@ function render(){
             ${getFaseTags(t)}
           </div>
           ${(t.notes) ? `<div class="task-note" id="note-${t.id}">${esc(t.notes)}</div>` : ''}
+          ${(t.link) ? `<a class="task-link" href="${esc(t.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><svg width="11" height="11" style="flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>${esc(t.link.replace(/^https?:\/\//,'').slice(0,30))}${t.link.replace(/^https?:\/\//,'').length>30?'…':''}</a>` : ''}
         </div>
         <div style="display:flex;align-items:center;gap:4px;">
           ${(t.notes) ? `<span title="Tem observações" style="color:var(--blue);opacity:0.6;display:flex;align-items:center;"><svg width="13" height="13" style="display:block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/><path d="M12 11h.01"/><path d="M16 11h.01"/><path d="M8 11h.01"/></svg></span>` : ''}
@@ -1671,6 +1680,7 @@ function openEditModal(id){
   document.getElementById('e-desc').value=t.desc;
   document.getElementById('e-custom-phase').value=t.faseCustom||'';
   document.getElementById('e-notes').value=t.notes||'';
+  document.getElementById('e-link').value=t.link||'';
   document.querySelectorAll('#e-phase-picker .phase-opt').forEach(b=>{
     b.className='phase-opt';
     if(editPhases.includes(b.dataset.fase)) b.classList.add('sel-'+b.dataset.fase);
@@ -1701,6 +1711,7 @@ function saveEdit(){
   t.faseCustom=document.getElementById('e-custom-phase').value.trim();
   t.desc=document.getElementById('e-desc').value.trim();
   t.notes=document.getElementById('e-notes').value.trim();
+  t.link=document.getElementById('e-link').value.trim();
   if(!t.desc){alert('Preencha a descrição.');return;}
   save(); closeEditModal(); render();
 }
@@ -1884,21 +1895,30 @@ function renderChatMessages(){
     const mine=m.user_id===currentUser.id;
     const name=chatProfiles[m.user_id]||'Usuário';
     const time=new Date(m.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    const showAvatar=!mine&&(!prev||prev.user_id!==m.user_id);
+    const isFirst=!prev||prev.user_id!==m.user_id;
+    const isLast=true; // simplificado: sempre mostra avatar na última do grupo (calculamos abaixo)
     const editedTag=m.edited_at?`<span class="chat-edited-tag">(editado)</span>`:'';
-    const avatarHtml=showAvatar?chatAvatar(m.user_id,name,false):`<div style="width:26px;flex-shrink:0;"></div>`;
-    h+=`<div class="chat-msg ${mine?'mine':'theirs'}" id="cmsg-${m.id}" style="${!mine?'display:flex;gap:6px;align-items:flex-end;':''}">
-      ${!mine?avatarHtml:''}
-      <div style="flex:1;min-width:0;">
-        ${showAvatar&&!mine?`<div class="chat-msg-name">${esc(name)}</div>`:''}
-        ${mine?`<div class="chat-msg-actions">
+
+    if(mine){
+      h+=`<div class="chat-msg mine" id="cmsg-${m.id}">
+        <div class="chat-msg-actions">
           <button class="chat-act-btn" onclick="chatStartEdit('${m.id}')" title="Editar"><svg width="11" height="11" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg></button>
           <button class="chat-act-btn del" onclick="chatShowDelete('${m.id}')" title="Apagar"><svg width="11" height="11" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
-        </div>`:''}
+        </div>
         <div class="chat-bubble" id="cbubble-${m.id}">${chatFmt(m.body)}</div>
         <div class="chat-msg-time">${time}${editedTag}</div>
-      </div>
-    </div>`;
+      </div>`;
+    } else {
+      const avatarHtml=isFirst?chatAvatar(m.user_id,name,false):`<div style="width:26px;flex-shrink:0;"></div>`;
+      h+=`<div class="chat-msg theirs" id="cmsg-${m.id}">
+        <div class="chat-msg-left">${avatarHtml}</div>
+        <div class="chat-msg-right">
+          ${isFirst?`<div class="chat-msg-name">${esc(name)}</div>`:''}
+          <div class="chat-bubble" id="cbubble-${m.id}">${chatFmt(m.body)}</div>
+          <div class="chat-msg-time">${time}${editedTag}</div>
+        </div>
+      </div>`;
+    }
     prev=m;
   });
   el.innerHTML=h;
@@ -2183,8 +2203,13 @@ function startChatPoll(){
     if(!currentUser) return;
     if(chatOpen&&chatView==='messages'&&chatActiveId){ await chatLoadMessages(); chatScrollBottom(); }
     await chatCheckUnread();
-  },4000);
+  },2000);
 }
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&chatOpen&&chatView==='messages'&&chatActiveId){
+    chatLoadMessages().then(()=>chatScrollBottom());
+  }
+});
 
 async function chatCheckUnread(){
   if(!chatChannelList.length) return;
@@ -2195,12 +2220,18 @@ async function chatCheckUnread(){
   if(!res.ok) return;
   const msgs=await res.json();
   if(!msgs.length) return;
+  let needsRender=false;
   let hasNew=false, toastMsg=null;
   msgs.forEach(m=>{
     // atualiza preview da última mensagem
     chatLastMsgs[m.channel_id]=m.body;
     const lastSeen=_chatLastSeen[m.channel_id]||'1970-01-01T00:00:00Z';
     if(m.created_at>lastSeen){
+      // se mensagem nova no canal aberto → força render imediato
+      if(chatActiveId===m.channel_id&&chatOpen&&chatView==='messages'){
+        _chatLastSeen[m.channel_id]=m.created_at;
+        needsRender=true;
+      }
       if(chatActiveId!==m.channel_id||!chatOpen){
         _chatUnread[m.channel_id]=(_chatUnread[m.channel_id]||0)+1;
         hasNew=true;
@@ -2217,6 +2248,7 @@ async function chatCheckUnread(){
       _chatLastSeen[m.channel_id]=m.created_at;
     }
   });
+  if(needsRender){ renderChatMessages(); chatScrollBottom(); }
   if(hasNew) playChatSound();
   if(toastMsg&&!chatOpen) showChatToast(toastMsg.senderName,toastMsg.body,toastMsg.channelId,toastMsg.channelName,toastMsg.channelType);
   setStored('chat_unread',JSON.stringify(_chatUnread));
@@ -2433,6 +2465,7 @@ async function leaveGroup(){
         <input class="custom-phase-input" id="e-custom-phase" placeholder="descreva a fase..." style="display:none;"/>
       </div>
       <div class="form-full"><label class="form-label">descrição</label><textarea class="form-input" id="e-desc" placeholder="descreva a entrega..." rows="2" style="resize:vertical;font-family:inherit;"></textarea></div>
+      <div class="form-full"><label class="form-label">link <span style="color:var(--text-hint);font-size:10px;">(opcional — drive, pasta, ref...)</span></label><input class="form-input" id="e-link" placeholder="https://..." type="url"/></div>
       <div class="form-full"><label class="form-label">observações <span style="color:var(--text-hint);font-size:10px;">(opcional)</span></label><textarea class="form-input" id="e-notes" placeholder="referências, contexto, instruções..." style="resize:vertical;min-height:72px;font-family:inherit;"></textarea></div>
     </div>
     <div class="modal-actions">
