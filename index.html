@@ -335,7 +335,7 @@ html,body{background:#0d0d0d;color:var(--text);font-family:'Syne',sans-serif;min
 .chat-msg-right{display:flex;flex-direction:column;max-width:210px;}
 .chat-msg-wrap{position:relative;}
 .chat-msg-name{font-size:10px;color:var(--text-hint);margin-bottom:3px;font-family:'DM Mono',monospace;padding-left:2px;}
-.chat-bubble{padding:8px 12px;border-radius:16px;font-size:13px;line-height:1.45;word-break:break-word;user-select:text;cursor:text;}
+.chat-bubble{padding:8px 12px;border-radius:16px;font-size:13px;line-height:1.45;word-break:break-word;user-select:text;cursor:text;white-space:pre-wrap;}
 .chat-bubble a{color:inherit;text-decoration:underline;text-underline-offset:2px;opacity:0.85;}
 .chat-bubble a:hover{opacity:1;}
 .chat-msg.mine .chat-bubble{background:var(--blue);color:#000;border-bottom-right-radius:4px;max-width:210px;}
@@ -653,7 +653,7 @@ function chatFmt(s){
     return '';
   }
   return esc(s)
-    .replace(/\n/g,'<br>')
+    .replace(/\r\n|\r|\n/g,'<br>')
     .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
     .replace(/_([^_\s][^_]*)_/g,'<em>$1</em>')
     .replace(/@([\w][^\s@,!?]*(?:\s[\w][^\s@,!?]*)?)/g,'<span class="chat-at">@$1</span>')
