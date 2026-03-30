@@ -341,13 +341,25 @@ html,body{background:#000;color:var(--text);font-family:'Syne',sans-serif;min-he
 .chat-fmt-btn:hover{color:var(--text);background:var(--surface3);}
 .chat-fmt-btn b{font-weight:800;}
 .chat-fmt-btn i{font-style:italic;}
-.chat-emoji-picker{position:absolute;bottom:calc(100% + 8px);right:0;width:280px;background:var(--surface2);border:1px solid var(--border-md);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.6);z-index:10;overflow:hidden;}
+.chat-emoji-picker{position:absolute;bottom:calc(100% + 8px);right:0;width:288px;background:var(--surface2);border:1px solid var(--border-md);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.6);z-index:10;overflow:hidden;}
+.chat-picker-tabs{display:flex;border-bottom:1px solid var(--border);}
+.chat-picker-tab{flex:1;background:none;border:none;border-bottom:2px solid transparent;padding:8px 4px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-hint);cursor:pointer;transition:all 0.12s;}
+.chat-picker-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
 .chat-emoji-cats{display:flex;border-bottom:1px solid var(--border);padding:4px 6px;gap:2px;}
 .chat-emoji-cat-btn{background:none;border:none;cursor:pointer;padding:4px 7px;border-radius:6px;font-size:14px;opacity:0.55;transition:opacity 0.1s,background 0.1s;}
 .chat-emoji-cat-btn:hover,.chat-emoji-cat-btn.active{opacity:1;background:var(--surface3);}
 .chat-emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:0;padding:6px;max-height:180px;overflow-y:auto;}
 .chat-emoji-btn{background:none;border:none;cursor:pointer;padding:5px 3px;font-size:18px;border-radius:6px;line-height:1;transition:background 0.1s;}
 .chat-emoji-btn:hover{background:var(--surface3);}
+.chat-gif-search{display:flex;gap:6px;padding:8px;}
+.chat-gif-input{flex:1;background:var(--surface3);border:1px solid var(--border);border-radius:6px;padding:6px 9px;font-size:12px;color:var(--text);font-family:'DM Mono',monospace;outline:none;}
+.chat-gif-input:focus{border-color:var(--blue-border);}
+.chat-gif-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:0 8px 8px;max-height:200px;overflow-y:auto;}
+.chat-gif-item{border-radius:6px;overflow:hidden;cursor:pointer;aspect-ratio:4/3;background:var(--surface3);}
+.chat-gif-item img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity 0.1s;}
+.chat-gif-item:hover img{opacity:0.8;}
+.chat-gif-msg{padding:16px;text-align:center;font-size:11px;font-family:'DM Mono',monospace;color:var(--text-hint);}
+.chat-bubble img.chat-gif{max-width:200px;max-height:160px;border-radius:8px;display:block;}
 .chat-send-btn{width:28px;height:28px;background:var(--blue);border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.15s;}
 .chat-send-btn:hover{opacity:0.82;}
 .chat-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px;color:var(--text-hint);font-size:13px;text-align:center;padding:20px;}
@@ -594,7 +606,13 @@ function getArchivedByKey(key){ return archive.find(a=>a.key===key)||null; }
 function isActiveMonth(){ return currentKey()===activeKey() && viewingArchive===null; }
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function chatFmt(s){ return esc(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/_([^_\s][^_]*)_/g,'<em>$1</em>'); }
+function chatFmt(s){
+  if(/^\[gif\]https?:\/\/.+/i.test(s.trim())){
+    const url=s.trim().slice(5);
+    return `<img class="chat-gif" src="${esc(url)}" alt="gif" loading="lazy"/>`;
+  }
+  return esc(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/_([^_\s][^_]*)_/g,'<em>$1</em>');
+}
 
 // ── TIME NAVIGATOR ──
 function changeYear(delta){
@@ -1104,6 +1122,7 @@ document.addEventListener('DOMContentLoaded',function(){
 });
 
 // ── SUPABASE ──
+const TENOR_KEY = 'AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCDY'; // chave demo Tenor — substitua por sua chave em console.cloud.google.com
 const SB_URL = 'https://qjfcikxazvakpuxxxtbz.supabase.co';
 const SB_KEY = 'sb_publishable_RzLDcQJ_skZ9nKNCl7RrtA_5_EPoEyD';
 let currentUser = null, sbToken = null, sbRefresh = null;
@@ -1851,26 +1870,67 @@ const _emojiCats=[
   {label:'🔥',name:'Símbolos',emojis:['🔥','⚡','✨','💫','⭐','🌟','💥','❄️','🌊','💧','🌈','☀️','🌙','⚪','⚫','🟤','🔴','🟠','🟡','🟢','🔵','🟣','🔶','🔷','🔸','🔹','🔺','🔻','💠','🔘','🔲','🔳','▪️','▫️','◾','◽','◼️','◻️','✅','❌','❎','⭕','🚫','✔️','➕','➖','➗','✖️','♻️','💯','‼️','⁉️','❓','❔','❕','❗','〰️','💤','🔔','🔕','🔇','🔈','🔉','🔊']},
   {label:'😂',name:'Reações',emojis:['👍','👎','❤️','😂','😮','😢','😡','🙌','🔥','💯','🎉','✅','👀','💪','🤝','🙏','💀','😭','🤣','😅','😬','🤦','🤷','🫡','💬','📣','🚀','⚡','🎯','💡']},
 ];
-let _emojiActiveCat=0;
+let _emojiActiveCat=0, _pickerTab='emoji';
 
 function toggleEmojiPicker(e){
   e.stopPropagation();
   const picker=document.getElementById('chat-emoji-picker');
   if(picker.style.display!=='none'){ picker.style.display='none'; return; }
-  renderEmojiPicker();
+  renderPicker();
   picker.style.display='';
   setTimeout(()=>document.addEventListener('click',function h(ev){ if(!picker.contains(ev.target)){picker.style.display='none'; document.removeEventListener('click',h);} }),0);
 }
 
-function renderEmojiPicker(){
+function renderPicker(){
   const picker=document.getElementById('chat-emoji-picker');
-  const cat=_emojiCats[_emojiActiveCat];
-  const tabs=_emojiCats.map((c,i)=>`<button class="chat-emoji-cat-btn${i===_emojiActiveCat?' active':''}" onclick="switchEmojiCat(${i});event.stopPropagation();" title="${c.name}">${c.label}</button>`).join('');
-  const grid=cat.emojis.map(em=>`<button class="chat-emoji-btn" onclick="insertEmoji('${em}');event.stopPropagation();">${em}</button>`).join('');
-  picker.innerHTML=`<div class="chat-emoji-cats">${tabs}</div><div class="chat-emoji-grid">${grid}</div>`;
+  const tabsHtml=`<div class="chat-picker-tabs">
+    <button class="chat-picker-tab${_pickerTab==='emoji'?' active':''}" onclick="switchPickerTab('emoji');event.stopPropagation();">😊 Emoji</button>
+    <button class="chat-picker-tab${_pickerTab==='gif'?' active':''}" onclick="switchPickerTab('gif');event.stopPropagation();">GIF</button>
+  </div>`;
+  if(_pickerTab==='emoji'){
+    const cat=_emojiCats[_emojiActiveCat];
+    const cats=_emojiCats.map((c,i)=>`<button class="chat-emoji-cat-btn${i===_emojiActiveCat?' active':''}" onclick="switchEmojiCat(${i});event.stopPropagation();" title="${c.name}">${c.label}</button>`).join('');
+    const grid=cat.emojis.map(em=>`<button class="chat-emoji-btn" onclick="insertEmoji('${em}');event.stopPropagation();">${em}</button>`).join('');
+    picker.innerHTML=tabsHtml+`<div class="chat-emoji-cats">${cats}</div><div class="chat-emoji-grid">${grid}</div>`;
+  } else {
+    picker.innerHTML=tabsHtml+`<div class="chat-gif-search"><input class="chat-gif-input" id="gif-search-inp" placeholder="Buscar GIF..." oninput="searchGifs(this.value)" onclick="event.stopPropagation()"/></div><div class="chat-gif-grid" id="gif-grid"><div class="chat-gif-msg">Digite para buscar GIFs</div></div>`;
+    setTimeout(()=>{ const el=document.getElementById('gif-search-inp'); if(el) el.focus(); },0);
+  }
 }
 
-function switchEmojiCat(idx){ _emojiActiveCat=idx; renderEmojiPicker(); }
+function switchPickerTab(tab){ _pickerTab=tab; renderPicker(); }
+function switchEmojiCat(idx){ _emojiActiveCat=idx; renderPicker(); }
+
+let _gifSearchTimer=null;
+function searchGifs(q){
+  clearTimeout(_gifSearchTimer);
+  const grid=document.getElementById('gif-grid');
+  if(!q.trim()){ grid.innerHTML='<div class="chat-gif-msg">Digite para buscar GIFs</div>'; return; }
+  grid.innerHTML='<div class="chat-gif-msg">Buscando...</div>';
+  _gifSearchTimer=setTimeout(async()=>{
+    try{
+      const res=await fetch(`https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(q)}&key=${TENOR_KEY}&limit=12&media_filter=gif`);
+      if(!res.ok) throw new Error();
+      const data=await res.json();
+      if(!data.results||!data.results.length){ grid.innerHTML='<div class="chat-gif-msg">Nenhum resultado</div>'; return; }
+      grid.innerHTML=data.results.map(r=>{
+        const tiny=r.media_formats?.tinygif?.url||r.media_formats?.gif?.url||'';
+        const full=r.media_formats?.gif?.url||tiny;
+        return `<div class="chat-gif-item" onclick="sendGif('${esc(full)}');event.stopPropagation();" title="${esc(r.title||'')}"><img src="${esc(tiny)}" alt="gif" loading="lazy"/></div>`;
+      }).join('');
+    }catch(_){ grid.innerHTML='<div class="chat-gif-msg">Erro ao buscar. Tente novamente.</div>'; }
+  },400);
+}
+
+async function sendGif(url){
+  const picker=document.getElementById('chat-emoji-picker');
+  if(picker) picker.style.display='none';
+  if(!chatActiveId) return;
+  await sbFetch('/rest/v1/messages',{method:'POST',headers:{'Prefer':'return=minimal'},
+    body:JSON.stringify({channel_id:chatActiveId,user_id:currentUser.id,body:'[gif]'+url})});
+  await chatLoadMessages();
+  chatScrollBottom();
+}
 
 function insertEmoji(em){
   const el=document.getElementById('chat-input');
