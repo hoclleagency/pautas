@@ -341,6 +341,13 @@ html,body{background:#000;color:var(--text);font-family:'Syne',sans-serif;min-he
 .chat-fmt-btn:hover{color:var(--text);background:var(--surface3);}
 .chat-fmt-btn b{font-weight:800;}
 .chat-fmt-btn i{font-style:italic;}
+.chat-emoji-picker{position:absolute;bottom:calc(100% + 8px);right:0;width:280px;background:var(--surface2);border:1px solid var(--border-md);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.6);z-index:10;overflow:hidden;}
+.chat-emoji-cats{display:flex;border-bottom:1px solid var(--border);padding:4px 6px;gap:2px;}
+.chat-emoji-cat-btn{background:none;border:none;cursor:pointer;padding:4px 7px;border-radius:6px;font-size:14px;opacity:0.55;transition:opacity 0.1s,background 0.1s;}
+.chat-emoji-cat-btn:hover,.chat-emoji-cat-btn.active{opacity:1;background:var(--surface3);}
+.chat-emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:0;padding:6px;max-height:180px;overflow-y:auto;}
+.chat-emoji-btn{background:none;border:none;cursor:pointer;padding:5px 3px;font-size:18px;border-radius:6px;line-height:1;transition:background 0.1s;}
+.chat-emoji-btn:hover{background:var(--surface3);}
 .chat-send-btn{width:28px;height:28px;background:var(--blue);border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.15s;}
 .chat-send-btn:hover{opacity:0.82;}
 .chat-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px;color:var(--text-hint);font-size:13px;text-align:center;padding:20px;}
@@ -1837,6 +1844,45 @@ async function sendChatMessage(){
   chatScrollBottom();
 }
 
+const _emojiCats=[
+  {label:'😊',name:'Rostos',emojis:['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🫠','🤭','🤫','🤔','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🥴','😵','🤯','🤠','🥳','🥸','😎','🤓','🧐','😕','🫤','😟','🙁','☹️','😮','😯','😲','😳','🥺','🫢','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️']},
+  {label:'👋',name:'Gestos',emojis:['👋','🤚','🖐','✋','🖖','🫱','🫲','🫳','🫴','👌','🤌','🤏','✌️','🤞','🫰','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','🫵','👍','👎','✊','👊','🤛','🤜','👏','🙌','🫶','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦾','🦵','🦿','👂','🦻','👃','🫀','🫁','🧠','🦷','🦴','👀','👁','👅','👄','🫦','💋']},
+  {label:'❤️',name:'Amor',emojis:['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','☮️','✝️','☯️','🕊','🫶','💑','💏','💑','🌹','🌷','💐','🎁','🎀','🎊','🎉','🥂','🍾','💍','💎']},
+  {label:'🔥',name:'Símbolos',emojis:['🔥','⚡','✨','💫','⭐','🌟','💥','❄️','🌊','💧','🌈','☀️','🌙','⚪','⚫','🟤','🔴','🟠','🟡','🟢','🔵','🟣','🔶','🔷','🔸','🔹','🔺','🔻','💠','🔘','🔲','🔳','▪️','▫️','◾','◽','◼️','◻️','✅','❌','❎','⭕','🚫','✔️','➕','➖','➗','✖️','♻️','💯','‼️','⁉️','❓','❔','❕','❗','〰️','💤','🔔','🔕','🔇','🔈','🔉','🔊']},
+  {label:'😂',name:'Reações',emojis:['👍','👎','❤️','😂','😮','😢','😡','🙌','🔥','💯','🎉','✅','👀','💪','🤝','🙏','💀','😭','🤣','😅','😬','🤦','🤷','🫡','💬','📣','🚀','⚡','🎯','💡']},
+];
+let _emojiActiveCat=0;
+
+function toggleEmojiPicker(e){
+  e.stopPropagation();
+  const picker=document.getElementById('chat-emoji-picker');
+  if(picker.style.display!=='none'){ picker.style.display='none'; return; }
+  renderEmojiPicker();
+  picker.style.display='';
+  setTimeout(()=>document.addEventListener('click',function h(ev){ if(!picker.contains(ev.target)){picker.style.display='none'; document.removeEventListener('click',h);} }),0);
+}
+
+function renderEmojiPicker(){
+  const picker=document.getElementById('chat-emoji-picker');
+  const cat=_emojiCats[_emojiActiveCat];
+  const tabs=_emojiCats.map((c,i)=>`<button class="chat-emoji-cat-btn${i===_emojiActiveCat?' active':''}" onclick="switchEmojiCat(${i});event.stopPropagation();" title="${c.name}">${c.label}</button>`).join('');
+  const grid=cat.emojis.map(em=>`<button class="chat-emoji-btn" onclick="insertEmoji('${em}');event.stopPropagation();">${em}</button>`).join('');
+  picker.innerHTML=`<div class="chat-emoji-cats">${tabs}</div><div class="chat-emoji-grid">${grid}</div>`;
+}
+
+function switchEmojiCat(idx){ _emojiActiveCat=idx; renderEmojiPicker(); }
+
+function insertEmoji(em){
+  const el=document.getElementById('chat-input');
+  if(!el) return;
+  const s=el.selectionStart, e2=el.selectionEnd;
+  el.value=el.value.slice(0,s)+em+el.value.slice(e2);
+  el.focus();
+  el.setSelectionRange(s+em.length,s+em.length);
+  // auto-resize
+  el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,80)+'px';
+}
+
 function chatWrapFmt(before, after){
   const el=document.getElementById('chat-input');
   if(!el) return;
@@ -2195,11 +2241,13 @@ async function leaveGroup(){
   <!-- mensagens -->
   <div class="chat-msgs" id="chat-msgs-view" style="display:none;"></div>
   <!-- input -->
-  <div class="chat-input-row" id="chat-input-row" style="display:none;">
+  <div class="chat-input-row" id="chat-input-row" style="display:none;position:relative;">
+    <div class="chat-emoji-picker" id="chat-emoji-picker" style="display:none;"></div>
     <div class="chat-input-wrap">
       <textarea class="chat-input" id="chat-input" placeholder="Mensagem..." rows="1" onkeydown="chatInputKeydown(event)"></textarea>
       <div class="chat-input-footer">
         <div class="chat-fmt-bar">
+          <button class="chat-fmt-btn" onclick="toggleEmojiPicker(event)" title="Emojis" style="font-size:15px;padding:3px 7px;">😊</button>
           <button class="chat-fmt-btn" onclick="chatWrapFmt('**','**')" title="Negrito"><b>B</b></button>
           <button class="chat-fmt-btn" onclick="chatWrapFmt('_','_')" title="Itálico"><i>I</i></button>
         </div>
