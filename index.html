@@ -333,6 +333,24 @@ html,body{background:#000;color:var(--text);font-family:'Syne',sans-serif;min-he
 .chat-send-btn{width:34px;height:34px;background:var(--blue);border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.15s;}
 .chat-send-btn:hover{opacity:0.82;}
 .chat-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:8px;color:var(--text-hint);font-size:13px;text-align:center;padding:20px;}
+.chat-toast{position:fixed;bottom:80px;right:24px;background:var(--surface2);border:1px solid var(--border-md);border-radius:10px;padding:10px 14px;cursor:pointer;z-index:901;box-shadow:0 4px 20px rgba(0,0,0,0.5);max-width:280px;animation:chatToastIn 0.2s ease;}
+@keyframes chatToastIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.chat-toast-name{font-size:11px;font-weight:700;color:var(--blue);font-family:'DM Mono',monospace;margin-bottom:2px;}
+.chat-toast-body{font-size:12px;color:var(--text);line-height:1.4;}
+.chat-new-group-btn{display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;background:none;border:none;border-top:1px solid var(--border);color:var(--text-hint);font-size:11px;font-family:'DM Mono',monospace;cursor:pointer;transition:color 0.12s;}
+.chat-new-group-btn:hover{color:var(--blue);}
+.chat-create-group-view{flex:1;overflow-y:auto;}
+.chat-form-section{padding:14px;}
+.chat-form-label{font-size:10px;font-family:'DM Mono',monospace;color:var(--text-hint);letter-spacing:1px;text-transform:uppercase;margin:12px 0 6px;}
+.chat-member-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer;}
+.chat-member-row:last-child{border-bottom:none;}
+.chat-member-row input[type=checkbox]{accent-color:var(--blue);width:14px;height:14px;flex-shrink:0;cursor:pointer;}
+.chat-create-btn{width:100%;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;padding:10px;background:var(--blue);color:#000;border:none;border-radius:7px;cursor:pointer;margin-top:14px;}
+.chat-group-menu{position:absolute;top:calc(100% + 4px);right:0;background:var(--surface2);border:1px solid var(--border-md);border-radius:8px;padding:4px 0;min-width:170px;z-index:10;box-shadow:0 4px 16px rgba(0,0,0,0.5);}
+.chat-group-menu-item{display:block;width:100%;padding:9px 14px;font-size:12px;font-family:'DM Mono',monospace;background:none;border:none;color:var(--text-muted);cursor:pointer;text-align:left;transition:all 0.1s;}
+.chat-group-menu-item:hover{color:var(--text);background:var(--surface3);}
+.chat-group-menu-item.danger:hover{color:#ff4545;}
+.chat-pheader{position:relative;}
 
 </style>
 </head>
@@ -1296,6 +1314,10 @@ function handlePhotoUpload(e){
       document.getElementById('profile-avatar-content').innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;
       const sidebarAvatar = document.getElementById('user-avatar-btn');
       if(sidebarAvatar) sidebarAvatar.innerHTML = `<img src="${dataUrl}" alt="avatar"/>`;
+      // sincroniza foto com perfil no Supabase para aparecer no chat dos outros
+      chatPhotos[currentUser.id]=dataUrl;
+      sbFetch('/rest/v1/profiles',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
+        body:JSON.stringify({user_id:currentUser.id,name:getStored('user_name_'+currentUser.id)||currentUser.email.split('@')[0],cargo:getStored('user_cargo_'+currentUser.id)||'',photo:dataUrl,updated_at:new Date().toISOString()})}).catch(()=>{});
     };
     img.src = ev.target.result;
   };
@@ -1479,19 +1501,21 @@ function saveEdit(){
 // ── CHAT ──────────────────────────────────────────────────
 let chatOpen=false, chatView='list';
 let chatActiveId=null, chatActiveName='', chatActiveType='';
-let chatProfiles={}, chatCargos={}, chatChannelList=[], chatMessages=[];
-let _chatPollTimer=null, _chatUnread={}, _chatLastSeen={};
+let chatProfiles={}, chatCargos={}, chatPhotos={}, chatChannelList=[], chatMessages=[];
+let chatLastMsgs={}, chatChannelAdmins={};
+let _chatPollTimer=null, _chatUnread={}, _chatLastSeen={}, _chatToastTimer=null;
 
 async function initChat(){
   if(!currentUser) return;
   const displayName=getStored('user_name_'+currentUser.id)||currentUser.email.split('@')[0];
   await sbFetch('/rest/v1/profiles',{method:'POST',headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
     body:JSON.stringify({user_id:currentUser.id,name:displayName,updated_at:new Date().toISOString()})});
-  const pr=await sbFetch('/rest/v1/profiles?select=user_id,name');
-  if(pr.ok)(await pr.json()).forEach(p=>{ chatProfiles[p.user_id]=p.name; chatCargos[p.user_id]=p.cargo||''; });
+  const pr=await sbFetch('/rest/v1/profiles?select=user_id,name,cargo,photo');
+  if(pr.ok)(await pr.json()).forEach(p=>{ chatProfiles[p.user_id]=p.name||''; chatCargos[p.user_id]=p.cargo||''; chatPhotos[p.user_id]=p.photo||''; });
   _chatUnread=JSON.parse(getStored('chat_unread')||'{}');
   _chatLastSeen=JSON.parse(getStored('chat_lastseen')||'{}');
   await chatLoadChannels();
+  await chatFetchLastMsgs();
   const fab=document.getElementById('chat-fab');
   if(fab) fab.style.display='';
   const sidebarBtn=document.getElementById('btn-chat-sidebar');
@@ -1503,13 +1527,14 @@ async function initChat(){
 }
 
 async function chatLoadChannels(){
-  const cr=await sbFetch('/rest/v1/channels?select=id,name,type&order=type.desc,name.asc');
+  const cr=await sbFetch('/rest/v1/channels?select=id,name,type,created_by&order=type.desc,name.asc');
   if(!cr.ok) return;
   const all=await cr.json();
   const mr=await sbFetch('/rest/v1/channel_members?user_id=eq.'+currentUser.id+'&select=channel_id');
   const memberOf=new Set();
   if(mr.ok)(await mr.json()).forEach(m=>memberOf.add(m.channel_id));
   chatChannelList=all.filter(c=>c.type==='group'||memberOf.has(c.id));
+  chatChannelList.forEach(c=>{ if(c.created_by) chatChannelAdmins[c.id]=c.created_by; });
   if(!chatChannelList.find(c=>c.type==='group'&&c.name==='geral')){
     const res=await sbFetch('/rest/v1/channels',{method:'POST',headers:{'Prefer':'return=representation'},
       body:JSON.stringify({name:'geral',type:'group'})});
@@ -1549,44 +1574,69 @@ function chatGoBack(){
   document.getElementById('chat-msgs-view').style.display='none';
   document.getElementById('chat-input-row').style.display='none';
   document.getElementById('chat-back-btn').style.display='none';
+  const actBtn=document.getElementById('chat-group-actions-btn');
+  if(actBtn) actBtn.style.display='none';
+  const cgv=document.getElementById('chat-create-group-view');
+  if(cgv) cgv.style.display='none';
   document.getElementById('chat-panel-title').textContent='Chat';
   renderChatList();
 }
 
+function chatAvatar(uid,label,isGroup){
+  if(isGroup) return `<div class="chat-av group">#</div>`;
+  const photo=chatPhotos[uid];
+  if(photo) return `<div class="chat-av" style="background:none;padding:0;overflow:hidden;"><img src="${photo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/></div>`;
+  return `<div class="chat-av">${esc((label||'?').charAt(0).toUpperCase())}</div>`;
+}
 function renderChatList(){
   const el=document.getElementById('chat-list-view');
   const others=Object.entries(chatProfiles).filter(([uid])=>uid!==currentUser.id);
   let h='';
-  const geral=chatChannelList.find(c=>c.type==='group'&&c.name==='geral');
-  if(geral){
-    const u=_chatUnread[geral.id]||0;
-    h+=`<div class="chat-list-item" onclick="chatOpenChannel('${geral.id}','geral','group')">
+  // grupos (geral primeiro, depois custom groups)
+  const groups=chatChannelList.filter(c=>c.type==='group').sort((a,b)=>a.name==='geral'?-1:b.name==='geral'?1:a.name.localeCompare(b.name));
+  groups.forEach(ch=>{
+    const u=_chatUnread[ch.id]||0;
+    const lastMsg=chatLastMsgs[ch.id];
+    const preview=lastMsg?esc(lastMsg.length>40?lastMsg.slice(0,40)+'…':lastMsg):'Todos da equipe';
+    h+=`<div class="chat-list-item" onclick="chatOpenChannel('${ch.id}','${esc(ch.name)}','group')">
       <div class="chat-av group">#</div>
-      <div class="chat-li-info"><div class="chat-li-name">geral</div><div class="chat-li-preview">Todos da equipe</div></div>
+      <div class="chat-li-info"><div class="chat-li-name">${esc(ch.name)}</div><div class="chat-li-preview">${preview}</div></div>
       ${u?`<div class="chat-li-unread">${u}</div>`:''}
     </div>`;
-  }
+  });
+  // DMs
   others.forEach(([uid,name])=>{
     const dmName='direct:'+[currentUser.id,uid].sort().join('_');
     const ch=chatChannelList.find(c=>c.name===dmName);
     const u=ch?(_chatUnread[ch.id]||0):0;
+    const lastMsg=ch?chatLastMsgs[ch.id]:null;
+    const preview=lastMsg?esc(lastMsg.length>40?lastMsg.slice(0,40)+'…':lastMsg):esc(chatCargos[uid]||'Mensagem direta');
     h+=`<div class="chat-list-item" onclick="chatOpenDM('${uid}')">
-      <div class="chat-av">${esc(name.charAt(0).toUpperCase())}</div>
-      <div class="chat-li-info"><div class="chat-li-name">${esc(name)}</div><div class="chat-li-preview">${esc(chatCargos[uid]||'Mensagem direta')}</div></div>
+      ${chatAvatar(uid,name,false)}
+      <div class="chat-li-info"><div class="chat-li-name">${esc(name)}</div><div class="chat-li-preview">${preview}</div></div>
       ${u?`<div class="chat-li-unread">${u}</div>`:''}
     </div>`;
   });
+  h+=`<button class="chat-new-group-btn" onclick="openCreateGroup()">
+    <svg width="13" height="13" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+    Novo grupo
+  </button>`;
   el.innerHTML=h||'<div class="chat-empty-state"><span>Nenhum usuário encontrado</span></div>';
 }
 
 async function chatOpenChannel(channelId,name,type){
   chatActiveId=channelId; chatActiveName=name; chatActiveType=type; chatView='messages';
   document.getElementById('chat-list-view').style.display='none';
+  const cgv=document.getElementById('chat-create-group-view');
+  if(cgv) cgv.style.display='none';
   const mv=document.getElementById('chat-msgs-view');
   mv.style.display='flex'; mv.style.flexDirection='column';
   document.getElementById('chat-input-row').style.display='';
   document.getElementById('chat-back-btn').style.display='';
   document.getElementById('chat-panel-title').textContent=type==='group'?'# '+name:name;
+  // mostrar botão de ações para grupos (exceto geral para admins, qualquer um pode sair)
+  const actBtn=document.getElementById('chat-group-actions-btn');
+  if(actBtn) actBtn.style.display=(type==='group'&&name!=='geral')?'':'none';
   _chatUnread[channelId]=0;
   setStored('chat_unread',JSON.stringify(_chatUnread));
   updateChatBadge();
@@ -1626,16 +1676,20 @@ function renderChatMessages(){
     const mine=m.user_id===currentUser.id;
     const name=chatProfiles[m.user_id]||'Usuário';
     const time=new Date(m.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    const showName=!mine&&(!prev||prev.user_id!==m.user_id);
+    const showAvatar=!mine&&(!prev||prev.user_id!==m.user_id);
     const editedTag=m.edited_at?`<span class="chat-edited-tag">(editado)</span>`:'';
-    h+=`<div class="chat-msg ${mine?'mine':'theirs'}" id="cmsg-${m.id}">
-      ${showName?`<div class="chat-msg-name">${esc(name)}</div>`:''}
-      ${mine?`<div class="chat-msg-actions">
-        <button class="chat-act-btn" onclick="chatStartEdit('${m.id}')" title="Editar"><svg width="11" height="11" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg></button>
-        <button class="chat-act-btn del" onclick="chatShowDelete('${m.id}')" title="Apagar"><svg width="11" height="11" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
-      </div>`:''}
-      <div class="chat-bubble" id="cbubble-${m.id}">${esc(m.body)}</div>
-      <div class="chat-msg-time">${time}${editedTag}</div>
+    const avatarHtml=showAvatar?chatAvatar(m.user_id,name,false):`<div style="width:26px;flex-shrink:0;"></div>`;
+    h+=`<div class="chat-msg ${mine?'mine':'theirs'}" id="cmsg-${m.id}" style="${!mine?'display:flex;gap:6px;align-items:flex-end;':''}">
+      ${!mine?avatarHtml:''}
+      <div style="flex:1;min-width:0;">
+        ${showAvatar&&!mine?`<div class="chat-msg-name">${esc(name)}</div>`:''}
+        ${mine?`<div class="chat-msg-actions">
+          <button class="chat-act-btn" onclick="chatStartEdit('${m.id}')" title="Editar"><svg width="11" height="11" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg></button>
+          <button class="chat-act-btn del" onclick="chatShowDelete('${m.id}')" title="Apagar"><svg width="11" height="11" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+        </div>`:''}
+        <div class="chat-bubble" id="cbubble-${m.id}">${esc(m.body)}</div>
+        <div class="chat-msg-time">${time}${editedTag}</div>
+      </div>
     </div>`;
     prev=m;
   });
@@ -1731,12 +1785,14 @@ async function chatCheckUnread(){
   const ids=chatChannelList.map(c=>c.id);
   const oldest=ids.reduce((acc,id)=>{ const ls=_chatLastSeen[id]||'1970-01-01T00:00:00Z'; return ls<acc?ls:acc; },new Date().toISOString());
   const idsStr='('+ids.map(id=>`"${id}"`).join(',')+')'
-  const res=await sbFetch('/rest/v1/messages?channel_id=in.'+encodeURIComponent(idsStr)+'&created_at=gt.'+encodeURIComponent(oldest)+'&user_id=neq.'+currentUser.id+'&select=id,channel_id,created_at&order=created_at.asc');
+  const res=await sbFetch('/rest/v1/messages?channel_id=in.'+encodeURIComponent(idsStr)+'&created_at=gt.'+encodeURIComponent(oldest)+'&user_id=neq.'+currentUser.id+'&select=id,channel_id,created_at,body,user_id&order=created_at.asc');
   if(!res.ok) return;
   const msgs=await res.json();
   if(!msgs.length) return;
-  let hasNew=false;
+  let hasNew=false, toastMsg=null;
   msgs.forEach(m=>{
+    // atualiza preview da última mensagem
+    chatLastMsgs[m.channel_id]=m.body;
     const lastSeen=_chatLastSeen[m.channel_id]||'1970-01-01T00:00:00Z';
     if(m.created_at>lastSeen){
       if(chatActiveId!==m.channel_id||!chatOpen){
@@ -1744,11 +1800,15 @@ async function chatCheckUnread(){
         hasNew=true;
         const senderName=chatProfiles[m.user_id]||'Alguém';
         showBrowserNotif(senderName, m.body.length>60?m.body.slice(0,60)+'…':m.body);
+        // toast in-app (usa a última mensagem nova)
+        const ch=chatChannelList.find(c=>c.id===m.channel_id);
+        toastMsg={senderName, body:m.body, channelId:m.channel_id, channelName:ch?ch.name:'', channelType:ch?ch.type:'group'};
       }
       _chatLastSeen[m.channel_id]=m.created_at;
     }
   });
   if(hasNew) playChatSound();
+  if(toastMsg&&!chatOpen) showChatToast(toastMsg.senderName,toastMsg.body,toastMsg.channelId,toastMsg.channelName,toastMsg.channelType);
   setStored('chat_unread',JSON.stringify(_chatUnread));
   setStored('chat_lastseen',JSON.stringify(_chatLastSeen));
   updateChatBadge();
@@ -1784,6 +1844,140 @@ function showBrowserNotif(senderName, body){
   if(typeof Notification==='undefined'||Notification.permission!=='granted') return;
   if(!document.hidden) return;
   try{ new Notification(senderName+' — Pautas',{body,icon:''}); }catch(_){}
+}
+
+function showChatToast(senderName, body, channelId, channelName, channelType){
+  clearTimeout(_chatToastTimer);
+  let toast=document.getElementById('chat-toast');
+  if(!toast){ toast=document.createElement('div'); toast.id='chat-toast'; toast.className='chat-toast'; document.body.appendChild(toast); }
+  const preview=body.length>60?body.slice(0,60)+'…':body;
+  const title=channelType==='group'?`${senderName} em #${channelName}`:senderName;
+  toast.innerHTML=`<div class="chat-toast-name">${esc(title)}</div><div class="chat-toast-body">${esc(preview)}</div>`;
+  toast.style.display='';
+  toast.onclick=()=>{ toast.style.display='none'; toggleChat(); setTimeout(()=>chatOpenChannel(channelId,channelName,channelType),80); };
+  _chatToastTimer=setTimeout(()=>{ toast.style.display='none'; },5000);
+}
+
+async function chatFetchLastMsgs(){
+  if(!chatChannelList.length) return;
+  const ids=chatChannelList.map(c=>c.id);
+  const idsStr='('+ids.map(id=>`"${id}"`).join(',')+')'
+  // busca a última mensagem de cada canal
+  const res=await sbFetch('/rest/v1/messages?channel_id=in.'+encodeURIComponent(idsStr)+'&select=channel_id,body&order=created_at.desc&limit='+ids.length*2);
+  if(!res.ok) return;
+  const msgs=await res.json();
+  const seen=new Set();
+  msgs.forEach(m=>{ if(!seen.has(m.channel_id)){ seen.add(m.channel_id); chatLastMsgs[m.channel_id]=m.body; } });
+}
+
+function openCreateGroup(){
+  chatView='create-group';
+  document.getElementById('chat-list-view').style.display='none';
+  document.getElementById('chat-back-btn').style.display='';
+  document.getElementById('chat-panel-title').textContent='Novo grupo';
+  const cgv=document.getElementById('chat-create-group-view');
+  const others=Object.entries(chatProfiles).filter(([uid])=>uid!==currentUser.id);
+  let membersHtml=others.map(([uid,name])=>`
+    <label class="chat-member-row">
+      <input type="checkbox" value="${uid}"/>
+      ${chatAvatar(uid,name,false)}
+      <div><div style="font-size:12px;color:var(--text)">${esc(name)}</div>${chatCargos[uid]?`<div style="font-size:10px;color:var(--text-hint);font-family:'DM Mono',monospace">${esc(chatCargos[uid])}</div>`:''}</div>
+    </label>`).join('');
+  cgv.innerHTML=`<div class="chat-form-section">
+    <div class="chat-form-label">Nome do grupo</div>
+    <input class="form-input" id="new-group-name" placeholder="ex: briefings, criativos..." style="font-size:13px;padding:8px 10px;"/>
+    <div class="chat-form-label" style="margin-top:14px;">Membros</div>
+    ${membersHtml}
+    <button class="chat-create-btn" onclick="submitCreateGroup()">Criar grupo</button>
+  </div>`;
+  cgv.style.display='flex'; cgv.style.flexDirection='column';
+}
+
+async function submitCreateGroup(){
+  const nameEl=document.getElementById('new-group-name');
+  const groupName=(nameEl?nameEl.value.trim():'').toLowerCase().replace(/\s+/g,'-');
+  if(!groupName) return;
+  const checked=[...document.querySelectorAll('#chat-create-group-view input[type=checkbox]:checked')].map(el=>el.value);
+  const cr=await sbFetch('/rest/v1/channels',{method:'POST',headers:{'Prefer':'return=representation'},
+    body:JSON.stringify({name:groupName,type:'group',created_by:currentUser.id})});
+  if(!cr.ok) return;
+  const created=await cr.json();
+  const ch=Array.isArray(created)?created[0]:created;
+  const members=[{channel_id:ch.id,user_id:currentUser.id},...checked.map(uid=>({channel_id:ch.id,user_id:uid}))];
+  await sbFetch('/rest/v1/channel_members',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(members)});
+  await chatLoadChannels();
+  await chatGoBack();
+}
+
+function toggleGroupActionsMenu(){
+  let menu=document.getElementById('chat-group-menu');
+  if(menu){ menu.remove(); return; }
+  const isAdmin=chatChannelAdmins[chatActiveId]===currentUser.id;
+  menu=document.createElement('div');
+  menu.id='chat-group-menu'; menu.className='chat-group-menu';
+  let items='';
+  if(isAdmin){
+    items+=`<button class="chat-group-menu-item" onclick="renameGroup()">Renomear grupo</button>`;
+    items+=`<button class="chat-group-menu-item danger" onclick="deleteGroup()">Apagar grupo</button>`;
+  } else {
+    items+=`<button class="chat-group-menu-item danger" onclick="leaveGroup()">Sair do grupo</button>`;
+  }
+  menu.innerHTML=items;
+  document.getElementById('chat-group-actions-btn').after(menu);
+  // fechar ao clicar fora
+  setTimeout(()=>document.addEventListener('click',function h(e){ if(!menu.contains(e.target)){menu.remove(); document.removeEventListener('click',h);} }),0);
+}
+
+function renameGroup(){
+  const menu=document.getElementById('chat-group-menu'); if(menu) menu.remove();
+  const titleEl=document.getElementById('chat-panel-title');
+  const current=chatActiveName;
+  titleEl.outerHTML=`<input class="form-input" id="chat-rename-input" value="${esc(current)}" style="flex:1;font-size:13px;padding:4px 8px;" onkeydown="if(event.key==='Enter')confirmRename('${chatActiveId}');if(event.key==='Escape')chatGoBack();" />`;
+  setTimeout(()=>{ const el=document.getElementById('chat-rename-input'); if(el){el.focus();el.select();} },0);
+}
+
+async function confirmRename(channelId){
+  const el=document.getElementById('chat-rename-input');
+  if(!el) return;
+  const newName=el.value.trim().toLowerCase().replace(/\s+/g,'-');
+  if(!newName) return;
+  await sbFetch('/rest/v1/channels?id=eq.'+channelId,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify({name:newName})});
+  chatActiveName=newName;
+  // restaura título
+  el.outerHTML=`<span class="chat-pheader-title" id="chat-panel-title"># ${esc(newName)}</span>`;
+  await chatLoadChannels();
+}
+
+function deleteGroup(){
+  const menu=document.getElementById('chat-group-menu'); if(menu) menu.remove();
+  const id=chatActiveId, name=chatActiveName;
+  // mostra confirmação inline no painel
+  const mv=document.getElementById('chat-msgs-view');
+  mv.style.display='flex'; mv.style.flexDirection='column';
+  mv.innerHTML=`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;text-align:center;">
+    <div style="color:var(--red);"><svg width="28" height="28" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></div>
+    <div style="font-size:13px;color:var(--text);font-weight:700;">Apagar grupo #${esc(name)}?</div>
+    <div style="font-size:11px;color:var(--text-muted);line-height:1.5;">Todas as mensagens serão removidas permanentemente.</div>
+    <div style="display:flex;gap:8px;width:100%;">
+      <button class="btn-cancel" style="flex:1;font-size:12px;" onclick="chatLoadMessages()">Cancelar</button>
+      <button class="btn-confirm" style="flex:1;font-size:12px;background:var(--red);color:#fff;" onclick="confirmDeleteGroup('${id}')">Apagar</button>
+    </div>
+  </div>`;
+}
+
+async function confirmDeleteGroup(id){
+  await sbFetch('/rest/v1/messages?channel_id=eq.'+id,{method:'DELETE'});
+  await sbFetch('/rest/v1/channel_members?channel_id=eq.'+id,{method:'DELETE'});
+  await sbFetch('/rest/v1/channels?id=eq.'+id,{method:'DELETE'});
+  await chatLoadChannels();
+  chatGoBack();
+}
+
+async function leaveGroup(){
+  const menu=document.getElementById('chat-group-menu'); if(menu) menu.remove();
+  await sbFetch('/rest/v1/channel_members?channel_id=eq.'+chatActiveId+'&user_id=eq.'+currentUser.id,{method:'DELETE'});
+  await chatLoadChannels();
+  chatGoBack();
 }
 
 </script>
@@ -1900,17 +2094,22 @@ function showBrowserNotif(senderName, body){
 
 <div class="chat-panel" id="chat-panel">
   <!-- header -->
-  <div class="chat-pheader">
+  <div class="chat-pheader" style="position:relative;">
     <button class="chat-hbtn" id="chat-back-btn" onclick="chatGoBack()" title="Voltar" style="display:none;">
       <svg width="16" height="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
     </button>
     <span class="chat-pheader-title" id="chat-panel-title">Chat</span>
+    <button class="chat-hbtn" id="chat-group-actions-btn" onclick="toggleGroupActionsMenu()" title="Opções do grupo" style="display:none;">
+      <svg width="15" height="15" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+    </button>
     <button class="chat-hbtn" onclick="toggleChat()" title="Fechar">
       <svg width="15" height="15" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
     </button>
   </div>
   <!-- lista de conversas -->
   <div class="chat-list-view" id="chat-list-view"></div>
+  <!-- criar grupo -->
+  <div class="chat-create-group-view" id="chat-create-group-view" style="display:none;flex:1;overflow-y:auto;"></div>
   <!-- mensagens -->
   <div class="chat-msgs" id="chat-msgs-view" style="display:none;"></div>
   <!-- input -->
