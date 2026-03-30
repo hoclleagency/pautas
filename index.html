@@ -402,6 +402,11 @@ html,body{background:#0d0d0d;color:var(--text);font-family:'Syne',sans-serif;min
 .chat-sched-confirm{width:100%;background:var(--blue);color:#000;border:none;border-radius:6px;padding:7px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;}
 .chat-sched-confirm:hover{opacity:0.85;}
 .chat-sched-msg-tag{display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--text-hint);font-family:'DM Mono',monospace;margin-top:4px;opacity:0.8;}
+.chat-sticker-preview{display:none;align-items:center;gap:8px;padding:6px 10px;background:var(--surface3);border-radius:8px;margin-bottom:4px;}
+.chat-sticker-preview.show{display:flex;}
+.chat-sticker-preview img{width:48px;height:48px;object-fit:cover;border-radius:6px;}
+.chat-sticker-preview-cancel{background:none;border:none;color:var(--text-hint);cursor:pointer;font-size:16px;padding:0 4px;line-height:1;transition:color 0.1s;}
+.chat-sticker-preview-cancel:hover{color:#ff4545;}
 .chat-mention-dropdown{position:absolute;bottom:calc(100% + 4px);left:0;background:var(--surface2);border:1px solid var(--border-md);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.5);min-width:180px;max-width:260px;z-index:20;overflow:hidden;}
 .chat-mention-item{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;transition:background 0.1s;}
 .chat-mention-item:hover,.chat-mention-item.active{background:var(--surface3);}
@@ -1972,6 +1977,7 @@ async function chatOpenChannel(channelId,name,type){
   const draft=getStored('chat_draft_'+channelId)||'';
   const inp=document.getElementById('chat-input');
   if(inp) inp.value=draft;
+  cancelStagedSticker();
   chatRefreshProfiles();
   await chatLoadMessages();
   chatScrollBottom(true);
@@ -2134,9 +2140,18 @@ function chatInputChanged(){
   btn.classList.toggle('active', inp.value.trim().length>0);
 }
 function chatSendIfActive(){
+  if(_stagedStickerId){ sendStagedSticker(); return; }
   const inp=document.getElementById('chat-input');
   if(!inp||!inp.value.trim()) return;
   sendChatMessage();
+}
+async function sendStagedSticker(){
+  const id=_stagedStickerId;
+  if(!id||!chatActiveId) return;
+  cancelStagedSticker();
+  await sbFetch('/rest/v1/messages',{method:'POST',headers:{'Prefer':'return=minimal'},
+    body:JSON.stringify({channel_id:chatActiveId,user_id:currentUser.id,body:`[sticker:${id}]`})});
+  await chatLoadMessages(); chatScrollBottom(true);
 }
 
 // ── SCHEDULE POP ──
@@ -2283,14 +2298,24 @@ function handleStickerUpload(e){
   reader.readAsDataURL(file);
 }
 
+let _stagedStickerId=null;
 function stageSticker(id){
-  // coloca o sticker no campo de texto para o usuário confirmar antes de enviar
   document.getElementById('chat-emoji-picker').style.display='none';
-  const inp=document.getElementById('chat-input');
-  if(!inp) return;
-  inp.value=`[sticker:${id}]`;
+  const st=chatStickers.find(s=>s.id===id);
+  if(!st) return;
+  _stagedStickerId=id;
+  const preview=document.getElementById('chat-sticker-preview');
+  const img=document.getElementById('chat-sticker-preview-img');
+  if(preview&&img){ img.src=st.data; preview.classList.add('show'); }
+  // ativa botão de enviar
+  const btn=document.getElementById('chat-send-btn');
+  if(btn) btn.classList.add('active');
+}
+function cancelStagedSticker(){
+  _stagedStickerId=null;
+  const preview=document.getElementById('chat-sticker-preview');
+  if(preview) preview.classList.remove('show');
   chatInputChanged();
-  inp.focus();
 }
 async function deleteSticker(id){
   chatStickers=chatStickers.filter(s=>s.id!==id);
@@ -2803,6 +2828,11 @@ async function leaveGroup(){
     <div class="chat-emoji-picker" id="chat-emoji-picker" style="display:none;"></div>
     <input type="file" id="chat-sticker-input" accept="image/png,image/gif,image/jpeg,image/webp" style="display:none" onchange="handleStickerUpload(event)"/>
     <div class="chat-input-wrap">
+      <div class="chat-sticker-preview" id="chat-sticker-preview">
+        <img id="chat-sticker-preview-img" src="" alt="sticker"/>
+        <span style="font-size:11px;color:var(--text-hint);font-family:'DM Mono',monospace;flex:1;">figurinha pronta para enviar</span>
+        <button class="chat-sticker-preview-cancel" onclick="cancelStagedSticker()" title="Cancelar">×</button>
+      </div>
       <textarea class="chat-input" id="chat-input" placeholder="Mensagem..." rows="1" onkeydown="chatInputKeydown(event)" oninput="chatInputChanged()"></textarea>
       <div class="chat-input-footer">
         <div class="chat-fmt-bar">
