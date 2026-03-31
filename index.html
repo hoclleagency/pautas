@@ -88,6 +88,15 @@ html,body{background:#0d0d0d;color:var(--text);font-family:'Syne',sans-serif;min
 .btn-deck{font-family:'DM Mono',monospace;font-size:11px;height:36px;padding:0 14px;background:transparent;border:1px solid rgba(0,189,247,0.35);color:rgba(0,189,247,0.9);border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all 0.15s;white-space:nowrap;}
 .btn-deck:hover{background:rgba(0,189,247,0.08);border-color:rgba(0,189,247,0.6);}
 .task-note{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.07);font-size:12px;color:var(--text-muted);line-height:1.6;white-space:pre-wrap;}
+.task-status-row{display:flex;justify-content:flex-end;margin-top:8px;padding-top:7px;border-top:1px solid rgba(255,255,255,0.06);}
+.task-status-tag{font-family:'DM Mono',monospace;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;cursor:pointer;transition:opacity 0.15s;user-select:none;letter-spacing:0.3px;}
+.task-status-tag:hover{opacity:0.8;}
+.task-status-tag.aguardando{background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);}
+.task-status-tag.revisao{background:rgba(249,115,22,0.15);color:#f97316;border:1px solid rgba(249,115,22,0.3);}
+.task-status-tag.aprovado{background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);}
+.task-status-tag.agendado{background:rgba(0,189,247,0.12);color:#00bdf7;border:1px solid rgba(0,189,247,0.25);}
+.task-status-tag.postado{background:rgba(168,85,247,0.15);color:#a855f7;border:1px solid rgba(168,85,247,0.3);}
+.task-status-tag.none{background:transparent;color:var(--text-hint);border:1px solid var(--border);}
 .task-link{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:11px;font-family:'DM Mono',monospace;color:var(--blue);opacity:0.75;text-decoration:none;transition:opacity 0.15s;}
 .task-link:hover{opacity:1;}
 
@@ -1120,6 +1129,7 @@ function render(){
           </div>
           ${(t.notes) ? `<div class="task-note" id="note-${t.id}">${esc(t.notes)}</div>` : ''}
           ${(t.link) ? `<a class="task-link" href="${esc(t.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><svg width="11" height="11" style="flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>${esc(t.link.replace(/^https?:\/\//,'').slice(0,30))}${t.link.replace(/^https?:\/\//,'').length>30?'…':''}</a>` : ''}
+          <div class="task-status-row"><span class="task-status-tag ${t.clientStatus||'none'}" onclick="${!readonly?`cycleClientStatus(${t.id});event.stopPropagation()`:''}" title="Status do cliente">${{'aguardando':'Aguardando','revisao':'Revisão','aprovado':'Aprovado','agendado':'Agendado','postado':'Postado'}[t.clientStatus]||'+ status'}</span></div>
         </div>
         <div style="display:flex;align-items:center;gap:4px;">
           ${(t.notes) ? `<span title="Tem observações" style="color:var(--blue);opacity:0.6;display:flex;align-items:center;"><svg width="13" height="13" style="display:block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/><path d="M12 11h.01"/><path d="M16 11h.01"/><path d="M8 11h.01"/></svg></span>` : ''}
@@ -1184,6 +1194,13 @@ function moveTask(taskId, targetPeriod, newDia){
 }
 
 // ── TASK ACTIONS ──
+const _clientStatusCycle=['','aguardando','revisao','aprovado','agendado','postado'];
+function cycleClientStatus(id){
+  const t=tasks.find(x=>x.id===id); if(!t) return;
+  const idx=_clientStatusCycle.indexOf(t.clientStatus||'');
+  t.clientStatus=_clientStatusCycle[(idx+1)%_clientStatusCycle.length];
+  save(); render();
+}
 function toggleDone(id){
   const t=tasks.find(t=>t.id===id);
   if(!t) return;
@@ -1417,7 +1434,7 @@ async function loadFromDB(){
     const er=await sbFetch('/rest/v1/entregas?user_id=eq.'+currentUser.id+'&order=ordem.asc,created_at.asc');
     if(er.ok){
       const ents=await er.json();
-      tasks=ents.map((e)=>({id:nextId(),dbId:e.id,dia:e.dia,cliente:e.cliente,formato:e.formato,fases:e.fases||[],faseCustom:e.fase_custom||'',desc:e.descricao,notes:e.notes||'',link:e.link||'',done:e.done,periodo:normalizePeriodo(e.periodo)}));
+      tasks=ents.map((e)=>({id:nextId(),dbId:e.id,dia:e.dia,cliente:e.cliente,formato:e.formato,fases:e.fases||[],faseCustom:e.fase_custom||'',desc:e.descricao,notes:e.notes||'',link:e.link||'',done:e.done,periodo:normalizePeriodo(e.periodo),clientStatus:e.client_status||''}));
     }
     // arquivo
     const ar=await sbFetch('/rest/v1/arquivo?user_id=eq.'+currentUser.id+'&order=created_at.desc');
@@ -1443,7 +1460,7 @@ async function saveToDB(){
     if(!delRes.ok){showSaveIndicator('error','✕ erro ao salvar');console.error('Erro DELETE:',await delRes.text());return;}
     if(tasks.length){
       const insRes=await sbFetch('/rest/v1/entregas',{method:'POST',headers:{'Prefer':'return=minimal'},
-        body:JSON.stringify(tasks.map((t,i)=>({user_id:currentUser.id,dia:t.dia,cliente:t.cliente,formato:t.formato||'',fases:t.fases||[],fase_custom:t.faseCustom||'',descricao:t.desc,notes:t.notes||'',link:t.link||'',done:t.done,ordem:i,periodo:t.periodo||activeKey()})))});
+        body:JSON.stringify(tasks.map((t,i)=>({user_id:currentUser.id,dia:t.dia,cliente:t.cliente,formato:t.formato||'',fases:t.fases||[],fase_custom:t.faseCustom||'',descricao:t.desc,notes:t.notes||'',link:t.link||'',done:t.done,ordem:i,periodo:t.periodo||activeKey(),client_status:t.clientStatus||''})))});
       if(!insRes.ok){showSaveIndicator('error','✕ erro ao salvar');console.error('Erro INSERT:',await insRes.text());return;}
     }
     await sbFetch('/rest/v1/configuracoes?user_id=eq.'+currentUser.id,{method:'DELETE'});
