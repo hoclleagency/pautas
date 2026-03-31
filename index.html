@@ -1126,10 +1126,10 @@ function render(){
             ${t.cliente?`<span class="tag cliente">${esc(t.cliente)}</span>`:''}
             ${t.formato?`<span class="tag">[${esc(t.formato)}]</span>`:''}
             ${getFaseTags(t)}
+            <span class="task-status-tag ${t.clientStatus||'none'}" onclick="${!readonly?`cycleClientStatus(${t.id});event.stopPropagation()`:''}" title="Status do cliente">${{'aguardando':'Aguardando','revisao':'Revisão','aprovado':'Aprovado','agendado':'Agendado','postado':'Postado'}[t.clientStatus]||'+ status'}</span>
           </div>
           ${(t.notes) ? `<div class="task-note" id="note-${t.id}">${esc(t.notes)}</div>` : ''}
           ${(t.link) ? `<a class="task-link" href="${esc(t.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><svg width="11" height="11" style="flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>${esc(t.link.replace(/^https?:\/\//,'').slice(0,30))}${t.link.replace(/^https?:\/\//,'').length>30?'…':''}</a>` : ''}
-          <div class="task-status-row"><span class="task-status-tag ${t.clientStatus||'none'}" onclick="${!readonly?`cycleClientStatus(${t.id});event.stopPropagation()`:''}" title="Status do cliente">${{'aguardando':'Aguardando','revisao':'Revisão','aprovado':'Aprovado','agendado':'Agendado','postado':'Postado'}[t.clientStatus]||'+ status'}</span></div>
         </div>
         <div style="display:flex;align-items:center;gap:4px;">
           ${(t.notes) ? `<span title="Tem observações" style="color:var(--blue);opacity:0.6;display:flex;align-items:center;"><svg width="13" height="13" style="display:block;flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/><path d="M12 11h.01"/><path d="M16 11h.01"/><path d="M8 11h.01"/></svg></span>` : ''}
