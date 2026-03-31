@@ -91,12 +91,13 @@ html,body{background:#0d0d0d;color:var(--text);font-family:'Syne',sans-serif;min
 .task-status-row{display:flex;justify-content:flex-end;margin-top:8px;padding-top:7px;border-top:1px solid rgba(255,255,255,0.06);}
 .task-status-tag{font-family:'DM Mono',monospace;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;cursor:pointer;transition:opacity 0.15s;user-select:none;letter-spacing:0.3px;}
 .task-status-tag:hover{opacity:0.8;}
+.task-status-tag.criacao{background:rgba(0,189,247,0.12);color:#00bdf7;border:1px solid rgba(0,189,247,0.25);}
+.task-status-tag.enviado{background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);}
 .task-status-tag.aguardando{background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);}
-.task-status-tag.revisao{background:rgba(249,115,22,0.15);color:#f97316;border:1px solid rgba(249,115,22,0.3);}
+.task-status-tag.ajustes{background:rgba(249,115,22,0.15);color:#f97316;border:1px solid rgba(249,115,22,0.3);}
 .task-status-tag.aprovado{background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);}
 .task-status-tag.agendado{background:rgba(0,189,247,0.12);color:#00bdf7;border:1px solid rgba(0,189,247,0.25);}
 .task-status-tag.postado{background:rgba(168,85,247,0.15);color:#a855f7;border:1px solid rgba(168,85,247,0.3);}
-.task-status-tag.enviado{background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3);}
 .task-status-tag.none{background:transparent;color:var(--text-hint);border:1px solid var(--border);}
 .task-link{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:11px;font-family:'DM Mono',monospace;color:var(--blue);opacity:0.75;text-decoration:none;transition:opacity 0.15s;}
 .task-link:hover{opacity:1;}
@@ -577,16 +578,6 @@ span.chat-at{color:var(--blue);font-weight:700;}
       <div><label class="form-label">dia</label><select class="form-select" id="f-dia"></select></div>
       <div><label class="form-label">cliente</label><select class="form-select" id="f-cliente"></select></div>
       <div><label class="form-label">formato</label><select class="form-select" id="f-formato"></select></div>
-      <div>
-        <label class="form-label">fase</label>
-        <div class="phase-picker" id="phase-picker">
-          <button type="button" class="phase-opt" data-fase="criacao" onclick="selectPhase('criacao')">criação</button>
-          <button type="button" class="phase-opt" data-fase="aprovacao" onclick="selectPhase('aprovacao')">aprovação</button>
-          <button type="button" class="phase-opt" data-fase="ajustes" onclick="selectPhase('ajustes')">ajustes</button>
-          <button type="button" class="phase-opt" data-fase="custom" onclick="selectPhase('custom')">+ outra</button>
-        </div>
-        <input class="custom-phase-input" id="custom-phase-input" placeholder="descreva a fase..." style="display:none;"/>
-      </div>
       <div class="form-full"><label class="form-label">descrição</label><textarea class="form-input" id="f-desc" placeholder="descreva a tarefa..." rows="2" style="resize:vertical;font-family:inherit;"></textarea></div>
       <div class="form-full"><label class="form-label">link <span style="color:var(--text-hint);font-size:10px;">(opcional — drive, pasta, ref...)</span></label><input class="form-input" id="f-link" placeholder="https://..." type="url"/></div>
       <div class="form-full"><label class="form-label">observações <span style="color:var(--text-hint);font-size:10px;">(opcional)</span></label><textarea class="form-input" id="f-notes" placeholder="referências, contexto, instruções..." style="resize:vertical;min-height:72px;font-family:inherit;"></textarea></div>
@@ -976,7 +967,6 @@ function applyFilters(list){
     if(filters.status==='pending'&&t.done) return false;
     if(filters.cliente&&t.cliente!==filters.cliente) return false;
     if(filters.formato&&t.formato!==filters.formato) return false;
-    if(filters.fase&&!(t.fases||[t.fase]).includes(filters.fase)) return false;
     return true;
   });
 }
@@ -1067,12 +1057,8 @@ function render(){
   // sidebar filters
   const uc=[...new Set(displayTasks.map(t=>t.cliente))].filter(Boolean);
   const uf=[...new Set(displayTasks.map(t=>t.formato))].filter(Boolean);
-  const _faseSeen=new Map();
-  displayTasks.forEach(t=>{const fases=t.fases||(t.fase?[t.fase]:[]);fases.forEach(f=>{if(!_faseSeen.has(f))_faseSeen.set(f,getFaseLabel(f,t.faseCustom));});});
-  const ufa=[..._faseSeen.keys()];
   if(document.getElementById('filter-clientes')) document.getElementById('filter-clientes').innerHTML=uc.map(c=>`<button class="pill${filters.cliente===c?' active':''}" onclick="setFilter('cliente',${JSON.stringify(c)})">${esc(c)}</button>`).join('');
   if(document.getElementById('filter-formatos')) document.getElementById('filter-formatos').innerHTML=uf.map(f=>`<button class="pill${filters.formato===f?' active':''}" onclick="setFilter('formato',${JSON.stringify(f)})">[${esc(f)}]</button>`).join('');
-  if(document.getElementById('filter-fases')) document.getElementById('filter-fases').innerHTML=ufa.map(f=>`<button class="pill${filters.fase===f?' active':''}" onclick="setFilter('fase',${JSON.stringify(f)})">${esc(_faseSeen.get(f)||f)}</button>`).join('');
 
   // time nav
   renderTimeNav();
@@ -1133,8 +1119,7 @@ function render(){
           <div class="task-tags">
             ${t.cliente?`<span class="tag cliente">${esc(t.cliente)}</span>`:''}
             ${t.formato?`<span class="tag">[${esc(t.formato)}]</span>`:''}
-            ${getFaseTags(t)}
-            <span class="task-status-tag ${t.clientStatus||'none'}" onclick="${!readonly?`cycleClientStatus(${t.id});event.stopPropagation()`:''}" title="Status do cliente">${{'aguardando':'Aguardando','revisao':'Revisão','enviado':'Enviar p/ aprovação','aprovado':'Aprovado','agendado':'Agendado','postado':'Postado'}[t.clientStatus]||'+ status'}</span>
+            <span class="task-status-tag ${t.clientStatus||'none'}" onclick="${!readonly?`cycleClientStatus(${t.id});event.stopPropagation()`:''}" title="Status">${{'criacao':'Criação','enviado':'Enviar p/ aprovação','aguardando':'Aguardando','ajustes':'Ajustes','aprovado':'Aprovado','agendado':'Agendado','postado':'Postado'}[t.clientStatus]||'+ status'}</span>
           </div>
           ${(t.notes) ? `<div class="task-note" id="note-${t.id}">${esc(t.notes)}</div>` : ''}
           ${(t.link) ? `<a class="task-link" href="${esc(t.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()"><svg width="11" height="11" style="flex-shrink:0;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>${esc(t.link.replace(/^https?:\/\//,'').slice(0,30))}${t.link.replace(/^https?:\/\//,'').length>30?'…':''}</a>` : ''}
@@ -1202,7 +1187,7 @@ function moveTask(taskId, targetPeriod, newDia){
 }
 
 // ── TASK ACTIONS ──
-const _clientStatusCycle=['','aguardando','revisao','enviado','aprovado','agendado','postado'];
+const _clientStatusCycle=['','criacao','enviado','aguardando','ajustes','aprovado','agendado','postado'];
 function cycleClientStatus(id){
   const t=tasks.find(x=>x.id===id); if(!t) return;
   const idx=_clientStatusCycle.indexOf(t.clientStatus||'');
@@ -2719,16 +2704,6 @@ async function leaveGroup(){
       <div><label class="form-label">dia</label><select class="form-select" id="e-dia"></select></div>
       <div><label class="form-label">cliente</label><select class="form-select" id="e-cliente"></select></div>
       <div><label class="form-label">formato</label><select class="form-select" id="e-formato"></select></div>
-      <div>
-        <label class="form-label">fase</label>
-        <div class="phase-picker" id="e-phase-picker">
-          <button type="button" class="phase-opt" data-fase="criacao" onclick="editSelectPhase('criacao')">criação</button>
-          <button type="button" class="phase-opt" data-fase="aprovacao" onclick="editSelectPhase('aprovacao')">aprovação</button>
-          <button type="button" class="phase-opt" data-fase="ajustes" onclick="editSelectPhase('ajustes')">ajustes</button>
-          <button type="button" class="phase-opt" data-fase="custom" onclick="editSelectPhase('custom')">+ outra</button>
-        </div>
-        <input class="custom-phase-input" id="e-custom-phase" placeholder="descreva a fase..." style="display:none;"/>
-      </div>
       <div class="form-full"><label class="form-label">descrição</label><textarea class="form-input" id="e-desc" placeholder="descreva a entrega..." rows="2" style="resize:vertical;font-family:inherit;"></textarea></div>
       <div class="form-full"><label class="form-label">link <span style="color:var(--text-hint);font-size:10px;">(opcional — drive, pasta, ref...)</span></label><input class="form-input" id="e-link" placeholder="https://..." type="url"/></div>
       <div class="form-full"><label class="form-label">observações <span style="color:var(--text-hint);font-size:10px;">(opcional)</span></label><textarea class="form-input" id="e-notes" placeholder="referências, contexto, instruções..." style="resize:vertical;min-height:72px;font-family:inherit;"></textarea></div>
