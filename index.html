@@ -889,7 +889,12 @@ function closeArchive(){ document.getElementById('archive-modal').classList.remo
 document.getElementById('archive-modal').addEventListener('click',function(e){if(e.target===this)closeArchive();});
 
 function showCloseConfirm(){
-  if(!tasks.length){
+  const key = activeKey();
+  if(archive.some(a => a.key === key)){
+    document.getElementById('close-step1-msg').innerHTML='<span style="color:#ff6464;">Este mês já foi arquivado.</span>';
+    return;
+  }
+  if(!tasks.filter(t => normalizePeriodo(t.periodo) === key).length){
     document.getElementById('close-step1-msg').innerHTML='<span style="color:#ff6464;">Não há tarefas para arquivar no mês atual.</span>';
     return;
   }
@@ -1635,10 +1640,6 @@ async function initApp(){
     _saving = false;
   }
 
-  // Remove stale archive entry for the current active month (can occur if
-  // reopenMonth() previously failed to persist the deletion to the DB).
-  const staleIdx = archive.findIndex(a => a.key === activeKey());
-  if(staleIdx >= 0){ archive.splice(staleIdx, 1); saveArchiveToDB(); }
   document.getElementById('loading-screen').style.display='none';
   document.getElementById('auth-screen').classList.remove('visible');
   document.getElementById('app').style.display='grid';
