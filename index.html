@@ -1474,14 +1474,14 @@ async function saveArchiveToDB(){
   try{
     // upsert por periodo para evitar perda de dados se o INSERT falhar
     const rows=archive.map(a=>({user_id:currentUser.id,periodo:a.key||a.month,closed_at:a.closedAt,entregas:a.tasks}));
-    const res=await sbFetch('/rest/v1/arquivo',{method:'POST',
+    const res=await sbFetch('/rest/v1/arquivo?on_conflict=user_id,periodo',{method:'POST',
       headers:{'Prefer':'resolution=merge-duplicates,return=minimal',
                'Content-Type':'application/json'},
       body:JSON.stringify(rows)});
     if(!res.ok){
       // fallback: tenta DELETE+INSERT só se upsert falhar
       await sbFetch('/rest/v1/arquivo?user_id=eq.'+currentUser.id,{method:'DELETE'});
-      await sbFetch('/rest/v1/arquivo',{method:'POST',headers:{'Prefer':'return=minimal'},
+      await sbFetch('/rest/v1/arquivo',{method:'POST',headers:{'Prefer':'return=minimal','Content-Type':'application/json'},
         body:JSON.stringify(rows)});
     }
   }catch(e){console.error('archive error',e);}
