@@ -777,10 +777,6 @@ function getFaseClass(fase){
 function openAddModal(){
   if(viewingArchive !== null) return;
   populateSelects();
-  selectedPhases=[];
-  document.querySelectorAll('#phase-picker .phase-opt').forEach(b=>b.className='phase-opt');
-  document.getElementById('custom-phase-input').style.display='none';
-  document.getElementById('custom-phase-input').value='';
   document.getElementById('f-desc').value='';
   document.getElementById('f-notes').value='';
   document.getElementById('f-link').value='';
@@ -797,14 +793,13 @@ function addTask(){
   const cliente=document.getElementById('f-cliente').value;
   const formato=document.getElementById('f-formato').value;
   const desc=document.getElementById('f-desc').value.trim();
-  const faseCustom=document.getElementById('custom-phase-input').value.trim();
   const notes=document.getElementById('f-notes').value.trim();
   const link=document.getElementById('f-link').value.trim();
   if(!dia){alert('Selecione o dia.');return;}
   if(!cliente){alert('Selecione o cliente.');return;}
   if(!desc){alert('Preencha a descrição.');return;}
   _addingTask = true;
-  tasks.push({id:nextId(),dia,cliente,formato,fases:selectedPhases.slice(),faseCustom,desc,notes,link,done:false,periodo:currentKey()});
+  tasks.push({id:nextId(),dia,cliente,formato,fases:[],faseCustom:'',desc,notes,link,done:false,periodo:currentKey()});
   save(); closeAddModal(); render();
   setTimeout(()=>{ _addingTask = false; }, 500);
 }
@@ -1755,14 +1750,8 @@ function openEditModal(id){
   formatos.forEach(f=>{const o=document.createElement('option');o.value=f;o.textContent='['+f+']';fSel.appendChild(o);});
   fSel.value=t.formato||'';
   document.getElementById('e-desc').value=t.desc;
-  document.getElementById('e-custom-phase').value=t.faseCustom||'';
   document.getElementById('e-notes').value=t.notes||'';
   document.getElementById('e-link').value=t.link||'';
-  document.querySelectorAll('#e-phase-picker .phase-opt').forEach(b=>{
-    b.className='phase-opt';
-    if(editPhases.includes(b.dataset.fase)) b.classList.add('sel-'+b.dataset.fase);
-  });
-  document.getElementById('e-custom-phase').style.display=editPhases.includes('custom')?'block':'none';
   document.getElementById('edit-modal').classList.add('open');
   setTimeout(()=>document.getElementById('e-desc').focus(),80);
 }
@@ -1784,8 +1773,6 @@ function saveEdit(){
   t.dia=document.getElementById('e-dia').value;
   t.cliente=document.getElementById('e-cliente').value;
   t.formato=document.getElementById('e-formato').value;
-  t.fases=editPhases.slice();
-  t.faseCustom=document.getElementById('e-custom-phase').value.trim();
   t.desc=document.getElementById('e-desc').value.trim();
   t.notes=document.getElementById('e-notes').value.trim();
   t.link=document.getElementById('e-link').value.trim();
