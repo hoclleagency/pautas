@@ -1650,6 +1650,19 @@ async function initApp(){
     try{ await saveToDB(); }finally{ _saving = false; }
   }
 
+  // Auto-navegar para o mês com tasks se o mês atual não tiver nenhuma
+  const currentMonthKey = activeKey();
+  const hasCurrentMonthTasks = tasks.some(t => normalizePeriodo(t.periodo) === currentMonthKey);
+  if(!hasCurrentMonthTasks && tasks.length > 0){
+    // Encontra o mês mais próximo que tem tasks
+    const periods = [...new Set(tasks.map(t => normalizePeriodo(t.periodo)))].sort();
+    const nextPeriod = periods.find(p => p >= currentMonthKey) || periods[periods.length-1];
+    if(nextPeriod){
+      const [y,m] = nextPeriod.split('-').map(Number);
+      navYear = y; navMonth = m-1;
+    }
+  }
+
   document.getElementById('loading-screen').style.display='none';
   document.getElementById('auth-screen').classList.remove('visible');
   document.getElementById('app').style.display='grid';
