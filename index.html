@@ -1424,6 +1424,17 @@ async function loadFromDB(){
       const ents=await er.json();
       tasks=ents.map((e)=>({id:nextId(),dbId:e.id,dia:e.dia,cliente:e.cliente,formato:e.formato,fases:e.fases||[],faseCustom:e.fase_custom||'',desc:e.descricao,notes:e.notes||'',link:e.link||'',done:e.done,periodo:normalizePeriodo(e.periodo),clientStatus:e.client_status||''}));
     }
+    // If DB returned empty but localStorage has a recent backup, restore it
+    if(!tasks.length){
+      try{
+        const bk=JSON.parse(getStored('tasks_backup_'+currentUser.id)||'null');
+        if(bk&&bk.length){
+          console.warn('[pautas] DB empty but backup found — restoring',bk.length,'tasks');
+          tasks=bk.map(t=>({...t,id:nextId()}));
+          _allowEmptySave=true; saveToDB(); // persist restored backup to DB
+        }
+      }catch(_){}
+    }
     // arquivo
     const ar=await sbFetch('/rest/v1/arquivo?user_id=eq.'+currentUser.id+'&order=created_at.desc');
     if(ar.ok){const archs=await ar.json();archive=archs.map(a=>({key:normalizePeriodo(a.periodo),month:keyToLabel(normalizePeriodo(a.periodo)),tasks:a.entregas,closedAt:a.closed_at}));}
@@ -1441,24 +1452,35 @@ function showSaveIndicator(state, msg){
 }
 
 let _allowEmptySave = false;
+function _taskRows(){ return tasks.map((t,i)=>({user_id:currentUser.id,dia:t.dia,cliente:t.cliente,formato:t.formato||'',fases:t.fases||[],fase_custom:t.faseCustom||'',descricao:t.desc,notes:t.notes||'',link:t.link||'',done:t.done,ordem:i,periodo:t.periodo||activeKey(),client_status:t.clientStatus||''})); }
 async function saveToDB(){
   if(!currentUser) return;
-  // Safety: never wipe the DB if tasks is empty unless explicitly allowed
-  // (prevents accidental data loss from race conditions or bugs)
+  // Safety: never wipe DB with empty tasks unless closeMonth explicitly allowed it
   if(!tasks.length && !_allowEmptySave){
-    const dbCount = await sbFetch('/rest/v1/entregas?user_id=eq.'+currentUser.id+'&select=id&limit=1').then(r=>r.ok?r.json():[]).catch(()=>[]);
-    if(dbCount.length > 0){ console.warn('[pautas] blocked empty save — DB has tasks'); showSaveIndicator('saved','✓ salvo'); return; }
+    const dbCount=await sbFetch('/rest/v1/entregas?user_id=eq.'+currentUser.id+'&select=id&limit=1').then(r=>r.ok?r.json():[]).catch(()=>[]);
+    if(dbCount.length>0){console.warn('[pautas] blocked empty save — DB has tasks');showSaveIndicator('saved','✓ salvo');return;}
   }
-  _allowEmptySave = false;
-  showSaveIndicator('saving', '● salvando...');
+  _allowEmptySave=false;
+  // Backup to localStorage before DELETE (insurance against INSERT failure)
+  if(tasks.length){ try{setStored('tasks_backup_'+currentUser.id,JSON.stringify(tasks));}catch(_){} }
+  showSaveIndicator('saving','● salvando...');
   try{
     const delRes=await sbFetch('/rest/v1/entregas?user_id=eq.'+currentUser.id,{method:'DELETE'});
     if(!delRes.ok){showSaveIndicator('error','✕ erro ao salvar');console.error('Erro DELETE:',await delRes.text());return;}
     if(tasks.length){
-      const insRes=await sbFetch('/rest/v1/entregas',{method:'POST',headers:{'Prefer':'return=minimal'},
-        body:JSON.stringify(tasks.map((t,i)=>({user_id:currentUser.id,dia:t.dia,cliente:t.cliente,formato:t.formato||'',fases:t.fases||[],fase_custom:t.faseCustom||'',descricao:t.desc,notes:t.notes||'',link:t.link||'',done:t.done,ordem:i,periodo:t.periodo||activeKey(),client_status:t.clientStatus||''})))});
-      if(!insRes.ok){showSaveIndicator('error','✕ erro ao salvar');console.error('Erro INSERT:',await insRes.text());return;}
+      const rows=_taskRows();
+      const insRes=await sbFetch('/rest/v1/entregas',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(rows)});
+      if(!insRes.ok){
+        // INSERT failed after DELETE — attempt emergency restore from backup
+        const bk=JSON.parse(getStored('tasks_backup_'+currentUser.id)||'null');
+        if(bk&&bk.length){
+          const bkRows=bk.map((t,i)=>({user_id:currentUser.id,dia:t.dia,cliente:t.cliente,formato:t.formato||'',fases:t.fases||[],fase_custom:t.faseCustom||'',descricao:t.desc,notes:t.notes||'',link:t.link||'',done:t.done,ordem:i,periodo:t.periodo||activeKey(),client_status:t.clientStatus||''}));
+          await sbFetch('/rest/v1/entregas',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify(bkRows)}).catch(()=>{});
+        }
+        showSaveIndicator('error','✕ erro ao salvar');console.error('Erro INSERT:',await insRes.text());return;
+      }
     }
+    try{rmStored('tasks_backup_'+currentUser.id);}catch(_){}
     await sbFetch('/rest/v1/configuracoes?user_id=eq.'+currentUser.id,{method:'DELETE'});
     await sbFetch('/rest/v1/configuracoes',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify([{user_id:currentUser.id,clientes,formatos,decks}])});
     showSaveIndicator('saved','✓ salvo');
@@ -1475,10 +1497,12 @@ async function saveArchiveToDB(){
                'Content-Type':'application/json'},
       body:JSON.stringify(rows)});
     if(!res.ok){
-      // fallback: tenta DELETE+INSERT só se upsert falhar
-      await sbFetch('/rest/v1/arquivo?user_id=eq.'+currentUser.id,{method:'DELETE'});
-      await sbFetch('/rest/v1/arquivo',{method:'POST',headers:{'Prefer':'return=minimal','Content-Type':'application/json'},
-        body:JSON.stringify(rows)});
+      // fallback: DELETE+INSERT only if upsert fails
+      const delFb=await sbFetch('/rest/v1/arquivo?user_id=eq.'+currentUser.id,{method:'DELETE'});
+      if(delFb.ok){
+        const insFb=await sbFetch('/rest/v1/arquivo',{method:'POST',headers:{'Prefer':'return=minimal','Content-Type':'application/json'},body:JSON.stringify(rows)});
+        if(!insFb.ok) console.error('archive fallback INSERT failed:',await insFb.text());
+      }
     }
   }catch(e){console.error('archive error',e);}
 }
@@ -1499,8 +1523,7 @@ async function _doSave(){
   if(_saving){ _savePending = true; return; }
   _saving = true;
   _savePending = false;
-  await saveToDB();
-  _saving = false;
+  try{ await saveToDB(); }finally{ _saving = false; }
   if(_savePending) _doSave();
 }
 
@@ -1621,11 +1644,10 @@ async function initApp(){
     _seen.add(_key);
     return true;
   });
-  if(tasks.length < _beforeDedup){
+  if(tasks.length < _beforeDedup && tasks.length > 0){
     console.warn(`[pautas] dedup: ${_beforeDedup - tasks.length} duplicata(s) removida(s). Salvando...`);
     _saving = true;
-    await saveToDB();
-    _saving = false;
+    try{ await saveToDB(); }finally{ _saving = false; }
   }
 
   document.getElementById('loading-screen').style.display='none';
