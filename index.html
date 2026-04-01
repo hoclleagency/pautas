@@ -901,7 +901,7 @@ function closeMonth(){
   tasks = toKeep;
   const next=new Date(NOW.getFullYear(), NOW.getMonth()+1, 1);
   navYear=next.getFullYear(); navMonth=next.getMonth(); viewingArchive=null;
-  save(); saveArchiveToDB(); hideCloseConfirm(); closeCloseMonth(); render();
+  _allowEmptySave = true; save(); saveArchiveToDB(); hideCloseConfirm(); closeCloseMonth(); render();
 }
 
 function renderArchiveContent(){
@@ -1440,8 +1440,16 @@ function showSaveIndicator(state, msg){
   }
 }
 
+let _allowEmptySave = false;
 async function saveToDB(){
   if(!currentUser) return;
+  // Safety: never wipe the DB if tasks is empty unless explicitly allowed
+  // (prevents accidental data loss from race conditions or bugs)
+  if(!tasks.length && !_allowEmptySave){
+    const dbCount = await sbFetch('/rest/v1/entregas?user_id=eq.'+currentUser.id+'&select=id&limit=1').then(r=>r.ok?r.json():[]).catch(()=>[]);
+    if(dbCount.length > 0){ console.warn('[pautas] blocked empty save — DB has tasks'); showSaveIndicator('saved','✓ salvo'); return; }
+  }
+  _allowEmptySave = false;
   showSaveIndicator('saving', '● salvando...');
   try{
     const delRes=await sbFetch('/rest/v1/entregas?user_id=eq.'+currentUser.id,{method:'DELETE'});
