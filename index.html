@@ -875,7 +875,7 @@ function closeArchive(){ document.getElementById('archive-modal').classList.remo
 document.getElementById('archive-modal').addEventListener('click',function(e){if(e.target===this)closeArchive();});
 
 function showCloseConfirm(){
-  const key = activeKey();
+  const key = currentKey();
   if(archive.some(a => a.key === key)){
     document.getElementById('close-step1-msg').innerHTML='<span style="color:#ff6464;">Este mês já foi arquivado.</span>';
     return;
@@ -884,7 +884,7 @@ function showCloseConfirm(){
     document.getElementById('close-step1-msg').innerHTML='<span style="color:#ff6464;">Não há tarefas para arquivar no mês atual.</span>';
     return;
   }
-  document.getElementById('confirm-month-name2').textContent = keyToLabel(activeKey());
+  document.getElementById('confirm-month-name2').textContent = keyToLabel(currentKey());
   document.getElementById('close-month-step1').style.display='none';
   document.getElementById('close-month-step2').style.display='block';
 }
@@ -894,12 +894,12 @@ function hideCloseConfirm(){
   document.getElementById('close-month-step2').style.display='none';
 }
 function closeMonth(){
-  const key = activeKey();
+  const key = currentKey();
   const toArchive = tasks.filter(t => normalizePeriodo(t.periodo) === key);
   const toKeep    = tasks.filter(t => normalizePeriodo(t.periodo) !== key);
   archive.unshift({key, month:keyToLabel(key), tasks:JSON.parse(JSON.stringify(toArchive)), closedAt:new Date().toLocaleDateString('pt-BR')});
   tasks = toKeep;
-  const next=new Date(NOW.getFullYear(), NOW.getMonth()+1, 1);
+  const next=new Date(navYear, navMonth+1, 1);
   navYear=next.getFullYear(); navMonth=next.getMonth(); viewingArchive=null;
   _allowEmptySave = true; save(); saveArchiveToDB(); hideCloseConfirm(); closeCloseMonth(); render();
 }
